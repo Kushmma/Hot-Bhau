@@ -1,0 +1,796 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Search — HatBhau</title>
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Noto+Sans+Devanagari:wght@600;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --bg-primary: #f8f9fc;
+            --bg-secondary: #ffffff;
+            --bg-glass: rgba(255, 255, 255, 0.7);
+            --bg-card: #ffffff;
+            --text-primary: #1a1a2e;
+            --text-secondary: #4a4a6a;
+            --text-muted: #6c757d;
+            --border-color: #e8ecf1;
+            --shadow-color: rgba(0, 0, 0, 0.08);
+            --accent: #e94560;
+            --accent-hover: #c73a52;
+            --accent-gradient: linear-gradient(135deg, #e94560, #ff6b6b);
+            --discount-bg: #e94560;
+            --discount-text: #ffffff;
+            --input-bg: #f1f3f5;
+            --skeleton-bg: #e9ecef;
+            --skeleton-shine: #f1f3f5;
+            --success: #2ecc71;
+            --warning: #f39c12;
+            --danger: #e74c3c;
+        }
+
+        [data-theme="dark"] {
+            --bg-primary: #0d0d1a;
+            --bg-secondary: #141428;
+            --bg-glass: rgba(20, 20, 40, 0.85);
+            --bg-card: #1a1a35;
+            --text-primary: #f0f0f5;
+            --text-secondary: #b0b0cc;
+            --text-muted: #8888aa;
+            --border-color: #2a2a4a;
+            --shadow-color: rgba(0, 0, 0, 0.4);
+            --input-bg: #1e1e3a;
+            --skeleton-bg: #1a1a35;
+            --skeleton-shine: #2a2a4a;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            transition: background 0.3s ease, color 0.3s ease;
+            min-height: 100vh;
+            padding-top: 72px;
+        }
+        a { color: var(--accent); text-decoration: none; }
+        a:hover { color: var(--accent-hover); }
+
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: var(--bg-primary); }
+        ::-webkit-scrollbar-thumb { background: var(--accent); border-radius: 8px; }
+
+        .fw-600 { font-weight: 600; }
+        .fw-700 { font-weight: 700; }
+        .fw-800 { font-weight: 800; }
+        .fw-900 { font-weight: 900; }
+        .text-accent { color: var(--accent) !important; }
+        .text-gradient {
+            background: var(--accent-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .btn-accent {
+            background: var(--accent-gradient);
+            color: #fff;
+            border: none;
+            padding: 10px 24px;
+            border-radius: 12px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        .btn-accent:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(233, 69, 96, 0.35);
+            color: #fff;
+        }
+        .btn-outline-accent {
+            border: 2px solid var(--accent);
+            color: var(--accent);
+            background: transparent;
+            padding: 8px 20px;
+            border-radius: 10px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        .btn-outline-accent:hover {
+            background: var(--accent);
+            color: #fff;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(233, 69, 96, 0.3);
+        }
+
+        .glass-card {
+            background: var(--bg-glass);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 16px;
+            box-shadow: 0 8px 32px var(--shadow-color);
+            transition: all 0.3s ease;
+        }
+        .glass-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 48px var(--shadow-color);
+        }
+
+        .navbar-hatbhau {
+            background: var(--bg-secondary);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-bottom: 1px solid var(--border-color);
+            padding: 12px 0;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1050;
+            transition: background 0.3s ease;
+        }
+        .navbar-hatbhau .brand {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+        }
+        .brand-mark {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 38px;
+            height: 38px;
+            flex-shrink: 0;
+            border-radius: 12px;
+            background: var(--accent-gradient);
+            box-shadow: 0 4px 14px rgba(233, 69, 96, 0.35);
+            position: relative;
+            overflow: hidden;
+        }
+        .brand-mark i { color: #fff; font-size: 1.1rem; transform: rotate(-8deg); }
+        .brand-mark::after {
+            content: "";
+            position: absolute;
+            top: -60%; left: -20%;
+            width: 70%; height: 200%;
+            background: rgba(255, 255, 255, 0.25);
+            transform: rotate(20deg);
+        }
+        .brand-wordmark {
+            display: inline-flex;
+            align-items: baseline;
+            gap: 3px;
+            font-weight: 900;
+            font-size: 1.45rem;
+            letter-spacing: -0.5px;
+            line-height: 1;
+        }
+        .brand-wordmark .dev-part {
+            font-family: 'Noto Sans Devanagari', 'Inter', sans-serif;
+            background: var(--accent-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .brand-wordmark .latin-part { color: var(--text-primary); }
+        .navbar-hatbhau .brand .sub {
+            display: block;
+            font-weight: 500;
+            font-size: 0.62rem;
+            color: var(--text-muted);
+            letter-spacing: 0.5px;
+            margin-top: 1px;
+        }
+
+        .nav-search-wrapper {
+            position: relative;
+            flex: 1;
+            max-width: 420px;
+        }
+        .nav-search-wrapper .nav-search-input {
+            width: 100%;
+            padding: 10px 16px 10px 44px;
+            border-radius: 12px;
+            border: 2px solid var(--border-color);
+            background: var(--input-bg);
+            color: var(--text-primary);
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+        }
+        .nav-search-wrapper .nav-search-input:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 4px rgba(233, 69, 96, 0.15);
+        }
+        .nav-search-wrapper .nav-search-icon {
+            position: absolute;
+            left: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+        }
+
+        .nav-link-custom {
+            color: var(--text-secondary);
+            font-weight: 500;
+            padding: 6px 14px;
+            border-radius: 8px;
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+        .nav-link-custom:hover {
+            background: rgba(233, 69, 96, 0.06);
+            color: var(--accent);
+        }
+        .nav-link-custom.active {
+            color: var(--accent);
+            background: rgba(233, 69, 96, 0.06);
+        }
+
+        .theme-toggle-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: 2px solid var(--border-color);
+            background: var(--input-bg);
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1rem;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        .theme-toggle-btn:hover {
+            border-color: var(--accent);
+            transform: rotate(20deg);
+        }
+
+        .footer-hatbhau {
+            background: var(--bg-secondary);
+            border-top: 1px solid var(--border-color);
+            padding: 40px 0 24px;
+            margin-top: 40px;
+        }
+
+        @media (max-width: 768px) {
+            body { padding-top: 64px; }
+            .navbar-hatbhau .brand-wordmark { font-size: 1.15rem; }
+            .navbar-hatbhau .brand-mark { width: 32px; height: 32px; }
+            .navbar-hatbhau .brand .sub { display: none; }
+        }
+
+        .filter-sidebar {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 20px;
+            position: sticky;
+            top: 90px;
+        }
+        .filter-sidebar .form-label {
+            font-weight: 600;
+            font-size: 0.9rem;
+        }
+        .filter-sidebar .form-control,
+        .filter-sidebar .form-select {
+            background: var(--input-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            border-radius: 10px;
+        }
+        .filter-sidebar .form-control:focus,
+        .filter-sidebar .form-select:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(233, 69, 96, 0.15);
+        }
+
+        .product-card {
+            background: var(--bg-card);
+            border-radius: 16px;
+            border: 1px solid var(--border-color);
+            overflow: hidden;
+            transition: all 0.3s ease;
+            height: 100%;
+            cursor: pointer;
+        }
+        .product-card:hover {
+            transform: translateY(-6px);
+            box-shadow: 0 16px 48px var(--shadow-color);
+            border-color: var(--accent);
+        }
+        .product-img-wrapper {
+            position: relative;
+            padding-top: 100%;
+            background: var(--input-bg);
+            overflow: hidden;
+        }
+        .product-img {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            padding: 16px;
+            opacity: 0;
+            transition: transform 0.4s ease, opacity 0.25s ease;
+        }
+        .product-img.loaded { opacity: 1; }
+        .product-card:hover .product-img { transform: scale(1.04); }
+
+        .discount-tag {
+            position: absolute;
+            top: 12px;
+            left: 12px;
+            background: var(--discount-bg);
+            color: var(--discount-text);
+            padding: 4px 12px;
+            border-radius: 8px;
+            font-size: 0.75rem;
+            font-weight: 700;
+            z-index: 2;
+        }
+        .store-badge-card {
+            position: absolute;
+            top: 12px;
+            right: 12px;
+            background: rgba(0, 0, 0, 0.7);
+            color: #fff;
+            padding: 3px 10px;
+            border-radius: 8px;
+            font-size: 0.6rem;
+            font-weight: 600;
+            letter-spacing: 0.3px;
+            z-index: 2;
+            backdrop-filter: blur(4px);
+        }
+        .product-card-body { padding: 16px; }
+        .product-title-link {
+            font-weight: 600;
+            color: var(--text-primary);
+            display: -webkit-box;
+            -line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            font-size: 0.95rem;
+            line-height: 1.4;
+            min-height: 44px;
+        }
+        .product-price-row {
+            margin-top: 8px;
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .orig-price {
+            color: var(--text-muted);
+            font-size: 0.8rem;
+            text-decoration: line-through;
+        }
+
+        .skeleton-card {
+            background: var(--skeleton-bg);
+            border-radius: 16px;
+            height: 280px;
+            animation: shimmer 1.5s ease-in-out infinite;
+            position: relative;
+            overflow: hidden;
+        }
+        @keyframes shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+        .skeleton-card::after {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(90deg, transparent, var(--skeleton-shine), transparent);
+            animation: shimmer 1.8s ease-in-out infinite;
+        }
+
+        @media (max-width: 992px) {
+            .filter-sidebar { position: relative; top: 0; }
+        }
+    </style>
+</head>
+<body>
+
+<!-- Navbar -->
+<nav class="navbar-hatbhau">
+    <div class="container">
+        <div class="d-flex align-items-center gap-3 w-100 flex-wrap">
+            <a class="brand text-decoration-none text-primary" href="/">
+                <span class="brand-mark"><i class="bi bi-tags-fill"></i></span>
+                <span>
+                    <span class="brand-wordmark"><span class="dev-part">हट</span><span class="latin-part">Bhau</span></span>
+                    <span class="sub d-none d-sm-inline">Nepal's Price Comparison</span>
+                </span>
+            </a>
+
+            <div class="d-flex align-items-center gap-1">
+                <a href="/" class="nav-link-custom">Home</a>
+                <a href="/search" class="nav-link-custom active">Search</a>
+                <a href="/compare" class="nav-link-custom">Compare</a>
+                <a href="/admin" class="nav-link-custom">Admin</a>
+            </div>
+
+            <div class="nav-search-wrapper d-none d-md-block">
+                <form action="/search" method="get" class="m-0">
+                    <i class="bi bi-search nav-search-icon"></i>
+                    <input type="text" name="q" class="nav-search-input" id="nav-search-input"
+                           placeholder="Search products..." autocomplete="off">
+                </form>
+            </div>
+
+            <button class="theme-toggle-btn ms-auto" id="theme-toggle" aria-label="Toggle theme">
+                <i class="bi bi-moon-stars-fill"></i>
+            </button>
+        </div>
+
+        <div class="d-md-none mt-2">
+            <form action="/search" method="get" class="position-relative">
+                <i class="bi bi-search position-absolute" style="left:12px; top:50%; transform:translateY(-50%); color:var(--text-muted);"></i>
+                <input type="text" name="q" class="nav-search-input" id="nav-search-input-mobile"
+                       placeholder="Search products..." autocomplete="off" style="padding-left:40px;">
+            </form>
+        </div>
+    </div>
+</nav>
+
+<!-- Main Content -->
+<main>
+    <div class="container py-4">
+        <div class="row">
+            <!-- Filters -->
+            <div class="col-lg-3">
+                <div class="filter-sidebar">
+                    <h5 class="fw-700 mb-3"><i class="bi bi-filters"></i> Filters</h5>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Search</label>
+                        <input type="text" class="form-control" id="search-query-input" 
+                               placeholder="Search products..." oninput="applyFilters()">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Store</label>
+                        <select class="form-select" id="search-store-filter" onchange="applyFilters()">
+                            <option value="">All Stores</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Category</label>
+                        <select class="form-select" id="search-category-filter" onchange="applyFilters()">
+                            <option value="">All Categories</option>
+                        </select>
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Min Price (Rs.)</label>
+                        <input type="number" class="form-control" id="search-min-price" 
+                               placeholder="0" oninput="applyFilters()">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Max Price (Rs.)</label>
+                        <input type="number" class="form-control" id="search-max-price" 
+                               placeholder="Any" oninput="applyFilters()">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Min Discount (%)</label>
+                        <input type="number" class="form-control" id="search-min-discount" 
+                               placeholder="0" oninput="applyFilters()">
+                    </div>
+                    
+                    <div class="mb-3">
+                        <label class="form-label">Sort By</label>
+                        <select class="form-select" id="search-sort-by" onchange="applyFilters()">
+                            <option value="updated">Recently Updated</option>
+                            <option value="price_asc">Price: Low to High</option>
+                            <option value="price_desc">Price: High to Low</option>
+                            <option value="discount">Best Discount</option>
+                            <option value="rating">Highest Rated</option>
+                        </select>
+                    </div>
+                    
+                    <button class="btn btn-accent w-100" onclick="applyFilters()">
+                        <i class="bi bi-search"></i> Apply Filters
+                    </button>
+                    <button class="btn btn-outline-accent w-100 mt-2" onclick="resetFilters()">
+                        <i class="bi bi-arrow-counterclockwise"></i> Reset
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Results -->
+            <div class="col-lg-9">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h4 class="fw-700 mb-0">
+                        <span id="search-result-count">0</span> Products
+                    </h4>
+                    <div>
+                        <span class="text-muted small" id="search-page-info">Page 1 of 1</span>
+                    </div>
+                </div>
+                <div class="row g-4" id="search-results">
+                    <div class="col-12 text-center py-5">
+                        <div class="spinner-border text-accent" role="status">
+                            <span class="visually-hidden">Loading...</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="d-flex justify-content-between align-items-center mt-4">
+                    <button class="btn btn-outline-accent btn-sm" id="search-prev-btn" onclick="changeSearchPage(-1)">
+                        <i class="bi bi-chevron-left"></i> Previous
+                    </button>
+                    <span class="text-muted small" id="search-page-indicator">Page 1</span>
+                    <button class="btn btn-outline-accent btn-sm" id="search-next-btn" onclick="changeSearchPage(1)">
+                        Next <i class="bi bi-chevron-right"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+
+<!-- Footer -->
+<footer class="footer-hatbhau">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-md-6 text-center text-md-start">
+                <div class="brand">
+                    <span class="brand-mark"><i class="bi bi-tags-fill"></i></span>
+                    <span class="brand-wordmark"><span class="dev-part">हट</span><span class="latin-part">Bhau</span></span>
+                </div>
+                <p class="text-muted small mt-2 mb-0">
+                    Compare prices across Nepal's top stores.
+                    <br class="d-sm-none">
+                    Made with ❤️ in Nepal.
+                </p>
+            </div>
+            <div class="col-md-6 text-center text-md-end">
+                <div class="d-flex gap-3 justify-content-center justify-content-md-end">
+                    <a href="/" class="text-muted small">Home</a>
+                    <a href="/search" class="text-muted small">Search</a>
+                    <a href="/compare" class="text-muted small">Compare</a>
+                    <a href="/admin" class="text-muted small">Admin</a>
+                </div>
+                <p class="text-muted small mt-2 mb-0">
+                    <i class="bi bi-database"></i> 
+                    <span id="footer-product-count">0</span> products tracked
+                </p>
+            </div>
+        </div>
+    </div>
+</footer>
+
+<script>
+    const PLACEHOLDER_IMG = '/static/images/placeholder.svg';
+
+    function safeImg(url) {
+        if (!url || url === 'None' || url === 'null' || url === 'undefined') return PLACEHOLDER_IMG;
+        return url;
+    }
+
+    function imgFallback(el) {
+        el.onerror = null;
+        el.src = PLACEHOLDER_IMG;
+        el.classList.add('loaded');
+    }
+
+    const STORE_ICONS = {
+        'Daraz': 'bi-bag-check', 'Brother Mart': 'bi-shop2', 'PriceOye': 'bi-globe',
+        'Sinja': 'bi-shop', '91mobiles': 'bi-phone', 'Fatafat Sewa': 'bi-lightning-charge',
+        'GadgetByte Nepal': 'bi-cpu',
+    };
+
+    function getStoreIcon(store) {
+        if (!store) return 'bi-shop';
+        const lower = store.toLowerCase();
+        for (const [key, icon] of Object.entries(STORE_ICONS)) {
+            if (lower.includes(key.toLowerCase())) return icon;
+        }
+        return 'bi-shop';
+    }
+
+    function productCard(p) {
+        const discount = p.discount || 0;
+        const discountTag = discount > 0 ? `<div class="discount-tag">-${Math.round(discount)}%</div>` : '';
+        const price = p.price || 0;
+        const originalPrice = p.original_price || p.originalPrice || 0;
+        const store = p.store || p.source || 'Store';
+        const storeIcon = getStoreIcon(store);
+        const imageUrl = safeImg(p.image_url);
+
+        return `
+        <div class="col-6 col-md-4 col-xl-3">
+            <div class="product-card glass-card h-100" onclick="location.href='/product/${p.id}'">
+                <div class="product-img-wrapper">
+                    ${discountTag}
+                    <div class="store-badge-card"><i class="bi ${storeIcon} me-1"></i>${store}</div>
+                    <img src="${imageUrl}" class="product-img" alt="${p.name}" loading="lazy"
+                         onload="this.classList.add('loaded')" onerror="imgFallback(this)">
+                </div>
+                <div class="product-card-body">
+                    <div class="product-title-link">${p.name}</div>
+                    <div class="product-price-row">
+                        <span class="fw-800 text-accent">Rs. ${price.toLocaleString()}</span>
+                        ${originalPrice ? `<span class="orig-price ms-2">Rs. ${originalPrice.toLocaleString()}</span>` : ''}
+                    </div>
+                </div>
+            </div>
+        </div>`;
+    }
+
+    // Theme toggle
+    document.addEventListener('DOMContentLoaded', () => {
+        const root = document.documentElement;
+        const toggle = document.getElementById('theme-toggle');
+        const saved = localStorage.getItem('hatbhau-theme');
+        if (saved) root.setAttribute('data-theme', saved);
+        if (saved === 'dark') {
+            toggle.querySelector('i').className = 'bi bi-sun-fill';
+        }
+
+        toggle?.addEventListener('click', () => {
+            const next = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+            root.setAttribute('data-theme', next);
+            localStorage.setItem('hatbhau-theme', next);
+            const icon = toggle.querySelector('i');
+            if (icon) icon.className = next === 'dark' ? 'bi bi-sun-fill' : 'bi bi-moon-stars-fill';
+        });
+
+        loadFilterOptions();
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const q = urlParams.get('q');
+        if (q) {
+            document.getElementById('search-query-input').value = q;
+        }
+        const category = urlParams.get('category');
+        if (category) {
+            setTimeout(() => {
+                document.getElementById('search-category-filter').value = category;
+                applyFilters();
+            }, 300);
+        }
+        const sortBy = urlParams.get('sort_by');
+        if (sortBy) {
+            setTimeout(() => {
+                document.getElementById('search-sort-by').value = sortBy;
+                applyFilters();
+            }, 300);
+        }
+
+        if (!q && !category && !sortBy) {
+            applyFilters();
+        }
+
+        fetch('/api/stats')
+            .then(r => r.json())
+            .then(data => {
+                document.getElementById('footer-product-count').textContent = data.total_products || 0;
+            })
+            .catch(() => {});
+    });
+
+    const searchState = {
+        page: 1,
+        perPage: 20,
+        filters: {},
+    };
+
+    function loadFilterOptions() {
+        fetch('/api/sources')
+            .then(r => r.json())
+            .then(sources => {
+                const select = document.getElementById('search-store-filter');
+                const current = select.value;
+                select.innerHTML = '<option value="">All Stores</option>';
+                Object.values(sources).forEach(s => {
+                    select.innerHTML += `<option value="${s.label}">${s.label}</option>`;
+                });
+                select.value = current;
+            })
+            .catch(() => {});
+
+        fetch('/api/categories')
+            .then(r => r.json())
+            .then(cats => {
+                const select = document.getElementById('search-category-filter');
+                const current = select.value;
+                select.innerHTML = '<option value="">All Categories</option>';
+                cats.forEach(c => {
+                    select.innerHTML += `<option value="${c.name}">${c.name}</option>`;
+                });
+                select.value = current;
+            })
+            .catch(() => {});
+    }
+
+    function applyFilters() {
+        const q = document.getElementById('search-query-input').value.trim();
+        const store = document.getElementById('search-store-filter').value;
+        const category = document.getElementById('search-category-filter').value;
+        const minPrice = document.getElementById('search-min-price').value;
+        const maxPrice = document.getElementById('search-max-price').value;
+        const minDiscount = document.getElementById('search-min-discount').value;
+        const sortBy = document.getElementById('search-sort-by').value;
+
+        searchState.filters = { q, store, category, minPrice, maxPrice, minDiscount, sortBy };
+        searchState.page = 1;
+        doSearch();
+    }
+
+    function resetFilters() {
+        document.getElementById('search-query-input').value = '';
+        document.getElementById('search-store-filter').value = '';
+        document.getElementById('search-category-filter').value = '';
+        document.getElementById('search-min-price').value = '';
+        document.getElementById('search-max-price').value = '';
+        document.getElementById('search-min-discount').value = '';
+        document.getElementById('search-sort-by').value = 'updated';
+        searchState.page = 1;
+        searchState.filters = {};
+        doSearch();
+    }
+
+    function doSearch() {
+        const f = searchState.filters;
+        let url = `/api/search?page=${searchState.page}&per_page=${searchState.perPage}`;
+        if (f.q) url += `&q=${encodeURIComponent(f.q)}`;
+        if (f.store) url += `&store=${encodeURIComponent(f.store)}`;
+        if (f.category) url += `&category=${encodeURIComponent(f.category)}`;
+        if (f.minPrice) url += `&min_price=${f.minPrice}`;
+        if (f.maxPrice) url += `&max_price=${f.maxPrice}`;
+        if (f.minDiscount) url += `&min_discount=${f.minDiscount}`;
+        if (f.sortBy) url += `&sort_by=${f.sortBy}`;
+
+        fetch(url)
+            .then(r => r.json())
+            .then(data => {
+                const container = document.getElementById('search-results');
+                if (data.items && data.items.length > 0) {
+                    container.innerHTML = data.items.map(p => productCard(p)).join('');
+                } else {
+                    container.innerHTML = `
+                        <div class="col-12 text-center py-5 text-muted">
+                            <i class="bi bi-inbox fs-1 d-block mb-3"></i>
+                            <h5>No products found</h5>
+                            <p class="small">Try adjusting your filters or search term</p>
+                        </div>`;
+                }
+                
+                document.getElementById('search-result-count').textContent = data.total || 0;
+                document.getElementById('search-page-info').textContent = `Page ${data.page || 1} of ${data.pages || 1}`;
+                document.getElementById('search-page-indicator').textContent = `Page ${data.page || 1}`;
+                
+                document.getElementById('search-prev-btn').disabled = (data.page || 1) <= 1;
+                document.getElementById('search-next-btn').disabled = (data.page || 1) >= (data.pages || 1);
+            })
+            .catch(() => {
+                document.getElementById('search-results').innerHTML = `
+                    <div class="col-12 text-center py-5 text-danger">
+                        <i class="bi bi-exclamation-triangle fs-1 d-block mb-3"></i>
+                        <h5>Error loading products</h5>
+                        <p class="small">Please try again later</p>
+                    </div>`;
+            });
+    }
+
+    function changeSearchPage(delta) {
+        searchState.page += delta;
+        doSearch();
+    }
+</script>
+
+</body>
+</html>

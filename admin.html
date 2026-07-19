@@ -1,0 +1,1293 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin — HatBhau</title>
+    
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Noto+Sans+Devanagari:wght@600;700;800&display=swap" rel="stylesheet">
+    
+    <style>
+        :root {
+            --bg-primary: #f8f9fc;
+            --bg-secondary: #ffffff;
+            --bg-glass: rgba(255, 255, 255, 0.7);
+            --bg-card: #ffffff;
+            --text-primary: #1a1a2e;
+            --text-secondary: #4a4a6a;
+            --text-muted: #6c757d;
+            --border-color: #e8ecf1;
+            --shadow-color: rgba(0, 0, 0, 0.08);
+            --accent: #e94560;
+            --accent-hover: #c73a52;
+            --accent-gradient: linear-gradient(135deg, #e94560, #ff6b6b);
+            --discount-bg: #e94560;
+            --discount-text: #ffffff;
+            --input-bg: #f1f3f5;
+            --skeleton-bg: #e9ecef;
+            --skeleton-shine: #f1f3f5;
+            --success: #2ecc71;
+            --warning: #f39c12;
+            --danger: #e74c3c;
+            --info: #3498db;
+        }
+
+        [data-theme="dark"] {
+            --bg-primary: #0d0d1a;
+            --bg-secondary: #141428;
+            --bg-glass: rgba(20, 20, 40, 0.85);
+            --bg-card: #1a1a35;
+            --text-primary: #f0f0f5;
+            --text-secondary: #b0b0cc;
+            --text-muted: #8888aa;
+            --border-color: #2a2a4a;
+            --shadow-color: rgba(0, 0, 0, 0.4);
+            --input-bg: #1e1e3a;
+            --skeleton-bg: #1a1a35;
+            --skeleton-shine: #2a2a4a;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            transition: background 0.3s ease, color 0.3s ease;
+            min-height: 100vh;
+            padding-top: 72px;
+        }
+        a { color: var(--accent); text-decoration: none; }
+        a:hover { color: var(--accent-hover); }
+
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: var(--bg-primary); }
+        ::-webkit-scrollbar-thumb { background: var(--accent); border-radius: 8px; }
+
+        .fw-600 { font-weight: 600; }
+        .fw-700 { font-weight: 700; }
+        .fw-800 { font-weight: 800; }
+        .fw-900 { font-weight: 900; }
+        .text-accent { color: var(--accent) !important; }
+        .text-gradient {
+            background: var(--accent-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        .btn-accent {
+            background: var(--accent-gradient);
+            color: #fff;
+            border: none;
+            padding: 10px 24px;
+            border-radius: 12px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        .btn-accent:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(233, 69, 96, 0.35);
+            color: #fff;
+        }
+        .btn-accent:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+        .btn-outline-accent {
+            border: 2px solid var(--accent);
+            color: var(--accent);
+            background: transparent;
+            padding: 8px 20px;
+            border-radius: 10px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        .btn-outline-accent:hover {
+            background: var(--accent);
+            color: #fff;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(233, 69, 96, 0.3);
+        }
+        .btn-outline-success {
+            border: 2px solid var(--success);
+            color: var(--success);
+            background: transparent;
+            padding: 8px 20px;
+            border-radius: 10px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        .btn-outline-success:hover {
+            background: var(--success);
+            color: #fff;
+        }
+        .btn-sm {
+            padding: 4px 12px;
+            font-size: 0.75rem;
+        }
+
+        .glass-card {
+            background: var(--bg-glass);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            border-radius: 16px;
+            box-shadow: 0 8px 32px var(--shadow-color);
+            transition: all 0.3s ease;
+        }
+        .glass-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 48px var(--shadow-color);
+        }
+
+        .navbar-hatbhau {
+            background: var(--bg-secondary);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-bottom: 1px solid var(--border-color);
+            padding: 12px 0;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 1050;
+            transition: background 0.3s ease;
+        }
+        .navbar-hatbhau .brand {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+        }
+        .brand-mark {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 38px;
+            height: 38px;
+            flex-shrink: 0;
+            border-radius: 12px;
+            background: var(--accent-gradient);
+            box-shadow: 0 4px 14px rgba(233, 69, 96, 0.35);
+            position: relative;
+            overflow: hidden;
+        }
+        .brand-mark i { color: #fff; font-size: 1.1rem; transform: rotate(-8deg); }
+        .brand-mark::after {
+            content: "";
+            position: absolute;
+            top: -60%; left: -20%;
+            width: 70%; height: 200%;
+            background: rgba(255, 255, 255, 0.25);
+            transform: rotate(20deg);
+        }
+        .brand-wordmark {
+            display: inline-flex;
+            align-items: baseline;
+            gap: 3px;
+            font-weight: 900;
+            font-size: 1.45rem;
+            letter-spacing: -0.5px;
+            line-height: 1;
+        }
+        .brand-wordmark .dev-part {
+            font-family: 'Noto Sans Devanagari', 'Inter', sans-serif;
+            background: var(--accent-gradient);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        .brand-wordmark .latin-part { color: var(--text-primary); }
+        .navbar-hatbhau .brand .sub {
+            display: block;
+            font-weight: 500;
+            font-size: 0.62rem;
+            color: var(--text-muted);
+            letter-spacing: 0.5px;
+            margin-top: 1px;
+        }
+
+        .nav-search-wrapper {
+            position: relative;
+            flex: 1;
+            max-width: 420px;
+        }
+        .nav-search-wrapper .nav-search-input {
+            width: 100%;
+            padding: 10px 16px 10px 44px;
+            border-radius: 12px;
+            border: 2px solid var(--border-color);
+            background: var(--input-bg);
+            color: var(--text-primary);
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+        }
+        .nav-search-wrapper .nav-search-input:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 4px rgba(233, 69, 96, 0.15);
+        }
+        .nav-search-wrapper .nav-search-icon {
+            position: absolute;
+            left: 14px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: var(--text-muted);
+        }
+
+        .nav-link-custom {
+            color: var(--text-secondary);
+            font-weight: 500;
+            padding: 6px 14px;
+            border-radius: 8px;
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+        .nav-link-custom:hover {
+            background: rgba(233, 69, 96, 0.06);
+            color: var(--accent);
+        }
+        .nav-link-custom.active {
+            color: var(--accent);
+            background: rgba(233, 69, 96, 0.06);
+        }
+
+        .theme-toggle-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: 2px solid var(--border-color);
+            background: var(--input-bg);
+            color: var(--text-primary);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.1rem;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+        .theme-toggle-btn:hover {
+            border-color: var(--accent);
+            transform: rotate(20deg);
+        }
+
+        .footer-hatbhau {
+            background: var(--bg-secondary);
+            border-top: 1px solid var(--border-color);
+            padding: 40px 0 24px;
+            margin-top: 40px;
+        }
+
+        @media (max-width: 768px) {
+            body { padding-top: 64px; }
+            .navbar-hatbhau .brand-wordmark { font-size: 1.15rem; }
+            .navbar-hatbhau .brand-mark { width: 32px; height: 32px; }
+            .navbar-hatbhau .brand .sub { display: none; }
+        }
+
+        .status-badge {
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            display: inline-block;
+        }
+        .status-badge.success { background: var(--success); color: #fff; }
+        .status-badge.failed { background: var(--danger); color: #fff; }
+        .status-badge.partial { background: var(--warning); color: #fff; }
+        .status-badge.idle { background: var(--text-muted); color: #fff; }
+        .status-badge.running { background: var(--accent); color: #fff; animation: pulse 1s infinite; }
+        .status-badge.cached { background: var(--info); color: #fff; }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+
+        .progress-bar-custom {
+            height: 6px;
+            border-radius: 4px;
+            background: var(--input-bg);
+            overflow: hidden;
+        }
+        .progress-bar-custom .progress-fill {
+            height: 100%;
+            background: var(--accent-gradient);
+            border-radius: 4px;
+            transition: width 0.5s ease;
+            width: 0%;
+        }
+
+        .admin-login-form {
+            max-width: 400px;
+            margin: 40px auto;
+        }
+        .admin-login-form .form-control {
+            background: var(--input-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            border-radius: 10px;
+            padding: 12px 16px;
+        }
+        .admin-login-form .form-control:focus {
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(233, 69, 96, 0.15);
+        }
+
+        .admin-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 20px;
+        }
+        .admin-card .card-title {
+            font-weight: 700;
+            font-size: 1.1rem;
+        }
+
+        .scrape-picker {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            max-height: 200px;
+            overflow-y: auto;
+            padding: 4px 2px;
+        }
+        .scrape-chip {
+            display: inline-flex;
+            align-items: center;
+            gap: 7px;
+            padding: 6px 12px;
+            border-radius: 20px;
+            border: 1px solid var(--border-color);
+            background: var(--input-bg);
+            font-size: 0.78rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            cursor: pointer;
+            user-select: none;
+            transition: all 0.2s ease;
+        }
+        .scrape-chip:hover {
+            border-color: var(--accent);
+        }
+        .scrape-chip input {
+            accent-color: var(--accent);
+            cursor: pointer;
+            margin: 0;
+        }
+        .scrape-chip.checked {
+            background: var(--accent-gradient);
+            border-color: transparent;
+            color: #fff;
+        }
+        .scrape-chip#chip-all {
+            font-weight: 700;
+            background: var(--bg-card);
+            border-style: dashed;
+        }
+        .scrape-chip#chip-all.checked {
+            background: var(--accent-gradient);
+            border-style: solid;
+        }
+        .scrape-chip .source-count {
+            font-size: 0.6rem;
+            opacity: 0.7;
+            font-weight: 400;
+        }
+
+        .scrape-result-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 2px 0;
+            border-bottom: 1px solid var(--border-color);
+            font-size: 0.75rem;
+        }
+        .scrape-result-item .status-badge {
+            font-size: 0.65rem;
+            padding: 2px 8px;
+        }
+
+        /* Stats Cards */
+        .stat-card {
+            padding: 16px;
+            border-radius: 12px;
+            background: var(--input-bg);
+            border: 1px solid var(--border-color);
+            text-align: center;
+            transition: all 0.3s ease;
+        }
+        .stat-card:hover {
+            border-color: var(--accent);
+        }
+        .stat-card .stat-number {
+            font-size: 1.8rem;
+            font-weight: 800;
+            color: var(--text-primary);
+        }
+        .stat-card .stat-label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            font-weight: 500;
+        }
+
+        /* Source health table enhancements */
+        .table-sm th {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-muted);
+            font-weight: 600;
+        }
+        .table-sm td {
+            font-size: 0.85rem;
+            vertical-align: middle;
+        }
+
+        /* Toast notification */
+        .toast-container {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 9999;
+        }
+        .toast-custom {
+            background: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            padding: 16px 20px;
+            box-shadow: 0 8px 32px var(--shadow-color);
+            min-width: 280px;
+            max-width: 400px;
+        }
+        .toast-custom .toast-title {
+            font-weight: 700;
+        }
+        .toast-custom .toast-message {
+            font-size: 0.9rem;
+            color: var(--text-secondary);
+        }
+    </style>
+</head>
+<body>
+
+<!-- Navbar -->
+<nav class="navbar-hatbhau">
+    <div class="container">
+        <div class="d-flex align-items-center gap-3 w-100 flex-wrap">
+            <a class="brand text-decoration-none text-primary" href="/">
+                <span class="brand-mark"><i class="bi bi-tags-fill"></i></span>
+                <span>
+                    <span class="brand-wordmark"><span class="dev-part">हट</span><span class="latin-part">Bhau</span></span>
+                    <span class="sub d-none d-sm-inline">Nepal's Price Comparison</span>
+                </span>
+            </a>
+
+            <div class="d-flex align-items-center gap-1">
+                <a href="/" class="nav-link-custom">Home</a>
+                <a href="/search" class="nav-link-custom">Search</a>
+                <a href="/compare" class="nav-link-custom">Compare</a>
+                <a href="/admin" class="nav-link-custom active">Admin</a>
+            </div>
+
+            <div class="nav-search-wrapper d-none d-md-block">
+                <form action="/search" method="get" class="m-0">
+                    <i class="bi bi-search nav-search-icon"></i>
+                    <input type="text" name="q" class="nav-search-input" id="nav-search-input"
+                           placeholder="Search products..." autocomplete="off">
+                </form>
+            </div>
+
+            <button class="theme-toggle-btn ms-auto" id="theme-toggle" aria-label="Toggle theme">
+                <i class="bi bi-moon-stars-fill"></i>
+            </button>
+        </div>
+
+        <div class="d-md-none mt-2">
+            <form action="/search" method="get" class="position-relative">
+                <i class="bi bi-search position-absolute" style="left:12px; top:50%; transform:translateY(-50%); color:var(--text-muted);"></i>
+                <input type="text" name="q" class="nav-search-input" id="nav-search-input-mobile"
+                       placeholder="Search products..." autocomplete="off" style="padding-left:40px;">
+            </form>
+        </div>
+    </div>
+</nav>
+
+<!-- Main Content -->
+<main>
+    <div class="container py-4">
+        <div id="admin-content">
+            <!-- Login Form -->
+            <div id="admin-login-form" class="admin-login-form">
+                <div class="text-center mb-4">
+                    <h3 class="fw-800"><i class="bi bi-shield-lock text-accent"></i> Admin Login</h3>
+                    <p class="text-muted small">Enter your credentials to access admin panel</p>
+                    <p class="text-muted small">Default: <strong>momo</strong> / <strong>momo</strong></p>
+                </div>
+                <form onsubmit="adminLogin(event)">
+                    <div class="mb-3">
+                        <label class="form-label">Username</label>
+                        <input type="text" class="form-control" id="admin-username" placeholder="momo" value="momo" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Password</label>
+                        <input type="password" class="form-control" id="admin-password" placeholder="••••••••" value="momo" required>
+                    </div>
+                    <button type="submit" class="btn btn-accent w-100">Login</button>
+                </form>
+                <div id="admin-login-error" class="text-danger text-center mt-2" style="display:none;">Invalid credentials</div>
+            </div>
+
+            <!-- Dashboard -->
+            <div id="admin-dashboard" style="display:none;">
+                <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
+                    <h3 class="fw-700"><i class="bi bi-speedometer2 text-accent"></i> Admin Dashboard</h3>
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-outline-success btn-sm" onclick="refreshData()">
+                            <i class="bi bi-arrow-clockwise"></i> Refresh
+                        </button>
+                        <button class="btn btn-outline-danger btn-sm" onclick="adminLogout()">
+                            <i class="bi bi-box-arrow-right"></i> Logout
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Stats Row -->
+                <div class="row g-3 mb-4" id="admin-stats-row">
+                    <div class="col-6 col-md-3">
+                        <div class="stat-card">
+                            <div class="stat-number" id="stat-total-products">0</div>
+                            <div class="stat-label">Total Products</div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <div class="stat-card">
+                            <div class="stat-number" id="stat-total-stores">0</div>
+                            <div class="stat-label">Stores</div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <div class="stat-card">
+                            <div class="stat-number" id="stat-avg-discount">0%</div>
+                            <div class="stat-label">Avg Discount</div>
+                        </div>
+                    </div>
+                    <div class="col-6 col-md-3">
+                        <div class="stat-card">
+                            <div class="stat-number" id="stat-last-scrape">Never</div>
+                            <div class="stat-label">Last Scrape</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Quick Actions -->
+                <div class="row g-3 mb-4">
+                    <div class="col-md-6">
+                        <div class="admin-card">
+                            <h6 class="card-title"><i class="bi bi-cloud-download text-accent"></i> Scrape Stores</h6>
+                            <p class="text-muted small mb-2">
+                                <i class="bi bi-info-circle"></i> 
+                                Enhanced scraper now gets <strong>ALL</strong> products from each store (not just filtered views). 
+                                Sources scrape concurrently for speed.
+                            </p>
+                            <div id="scrape-source-picker" class="scrape-picker mb-2">
+                                <div class="text-muted small">Loading stores…</div>
+                            </div>
+                            <div class="d-flex gap-2 flex-wrap">
+                                <button class="btn btn-accent btn-sm" onclick="triggerScrape()">
+                                    <i class="bi bi-lightning-charge-fill"></i> Scrape Selected
+                                </button>
+                                <button class="btn btn-outline-accent btn-sm" onclick="triggerScrapeAll()">
+                                    <i class="bi bi-collection"></i> Scrape All
+                                </button>
+                                <button class="btn btn-outline-success btn-sm" onclick="triggerScrapeNew()">
+                                    <i class="bi bi-plus-circle"></i> Scrape Custom URL
+                                </button>
+                            </div>
+                            <div id="scrape-status-text" class="mt-2 small"></div>
+                            <div class="progress-bar-custom mt-2">
+                                <div class="progress-fill" id="scrape-progress" style="width:0%;"></div>
+                            </div>
+                            <div id="scrape-results-detail" class="mt-2" style="display:none;">
+                                <div class="small text-muted">Scrape results:</div>
+                                <div id="scrape-results-list" class="small"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="admin-card">
+                            <h6 class="card-title"><i class="bi bi-tools text-accent"></i> Quick Actions</h6>
+                            <div class="d-flex flex-wrap gap-2">
+                                <a href="/api/export/csv" class="btn btn-outline-accent btn-sm">
+                                    <i class="bi bi-download"></i> Export CSV
+                                </a>
+                                <a href="/api/export/json" class="btn btn-outline-accent btn-sm">
+                                    <i class="bi bi-download"></i> Export JSON
+                                </a>
+                                <button class="btn btn-outline-danger btn-sm" onclick="clearAllData()">
+                                    <i class="bi bi-trash"></i> Clear All Data
+                                </button>
+                                <button class="btn btn-outline-info btn-sm" onclick="viewDatabaseStats()">
+                                    <i class="bi bi-database"></i> DB Stats
+                                </button>
+                            </div>
+                            <hr class="my-2">
+                            <div class="small text-muted">
+                                <i class="bi bi-info-circle"></i> 
+                                <strong>New sources:</strong> Choicemandu added. All sources now scrape ALL products.
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Health Status -->
+                <div class="admin-card">
+                    <h6 class="card-title"><i class="bi bi-heart-pulse text-accent"></i> Store Health</h6>
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Store</th>
+                                    <th>Country</th>
+                                    <th>Status</th>
+                                    <th>Products</th>
+                                    <th>Last Scrape</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="health-tbody">
+                                <tr><td colspan="6" class="text-center text-muted">Loading...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Scrape Logs -->
+                <div class="admin-card">
+                    <h6 class="card-title"><i class="bi bi-clock-history text-accent"></i> Scrape Logs</h6>
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Source</th>
+                                    <th>Status</th>
+                                    <th>Products</th>
+                                    <th>Duration</th>
+                                    <th>Started</th>
+                                    <th>Message</th>
+                                </tr>
+                            </thead>
+                            <tbody id="logs-tbody">
+                                <tr><td colspan="6" class="text-center text-muted">Loading...</td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</main>
+
+<!-- Custom URL Scrape Modal -->
+<div class="modal fade" id="customScrapeModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content" style="background: var(--bg-card); border-color: var(--border-color);">
+            <div class="modal-header" style="border-color: var(--border-color);">
+                <h5 class="modal-title"><i class="bi bi-plus-circle text-accent"></i> Scrape Custom URL</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" style="color: var(--text-primary);"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted small">Enter any URL and the scraper will automatically detect and extract products using the generic engine.</p>
+                <div class="mb-3">
+                    <label class="form-label">URL</label>
+                    <input type="url" class="form-control" id="custom-url-input" placeholder="https://example.com/products" 
+                           style="background: var(--input-bg); border-color: var(--border-color); color: var(--text-primary);">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Max Pages</label>
+                    <input type="number" class="form-control" id="custom-max-pages" value="50" min="5" max="500"
+                           style="background: var(--input-bg); border-color: var(--border-color); color: var(--text-primary);">
+                </div>
+                <div class="mb-3">
+                    <label class="form-label">Label (optional)</label>
+                    <input type="text" class="form-control" id="custom-label" placeholder="Custom Store Name"
+                           style="background: var(--input-bg); border-color: var(--border-color); color: var(--text-primary);">
+                </div>
+                <div class="form-check mb-3">
+                    <input class="form-check-input" type="checkbox" id="custom-render-js" style="accent-color: var(--accent);">
+                    <label class="form-check-label" for="custom-render-js">
+                        Render with JavaScript (Selenium) - slower but works for SPAs
+                    </label>
+                </div>
+            </div>
+            <div class="modal-footer" style="border-color: var(--border-color);">
+                <button class="btn btn-outline-accent btn-sm" data-bs-dismiss="modal">Cancel</button>
+                <button class="btn btn-accent btn-sm" onclick="triggerCustomScrape()">
+                    <i class="bi bi-cloud-download"></i> Scrape
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Toast Container -->
+<div class="toast-container" id="toast-container"></div>
+
+<!-- Footer -->
+<footer class="footer-hatbhau">
+    <div class="container">
+        <div class="row align-items-center">
+            <div class="col-md-6 text-center text-md-start">
+                <div class="brand">
+                    <span class="brand-mark"><i class="bi bi-tags-fill"></i></span>
+                    <span class="brand-wordmark"><span class="dev-part">हट</span><span class="latin-part">Bhau</span></span>
+                </div>
+                <p class="text-muted small mt-2 mb-0">
+                    Compare prices across Nepal's top stores.
+                    <br class="d-sm-none">
+                    Made with ❤️ in Nepal.
+                </p>
+            </div>
+            <div class="col-md-6 text-center text-md-end">
+                <div class="d-flex gap-3 justify-content-center justify-content-md-end">
+                    <a href="/" class="text-muted small">Home</a>
+                    <a href="/search" class="text-muted small">Search</a>
+                    <a href="/compare" class="text-muted small">Compare</a>
+                    <a href="/admin" class="text-muted small">Admin</a>
+                </div>
+                <p class="text-muted small mt-2 mb-0">
+                    <i class="bi bi-database"></i> 
+                    <span id="footer-product-count">0</span> products tracked
+                </p>
+            </div>
+        </div>
+    </div>
+</footer>
+
+<!-- Bootstrap JS for modal -->
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+
+<script>
+    let adminScrapeInterval = null;
+    let customScrapeModal = null;
+
+    // Theme toggle
+    document.addEventListener('DOMContentLoaded', () => {
+        const root = document.documentElement;
+        const toggle = document.getElementById('theme-toggle');
+        const saved = localStorage.getItem('hatbhau-theme');
+        if (saved) root.setAttribute('data-theme', saved);
+        if (saved === 'dark') {
+            toggle.querySelector('i').className = 'bi bi-sun-fill';
+        }
+
+        toggle?.addEventListener('click', () => {
+            const next = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+            root.setAttribute('data-theme', next);
+            localStorage.setItem('hatbhau-theme', next);
+            const icon = toggle.querySelector('i');
+            if (icon) icon.className = next === 'dark' ? 'bi bi-sun-fill' : 'bi bi-moon-stars-fill';
+        });
+
+        // Initialize modal
+        customScrapeModal = new bootstrap.Modal(document.getElementById('customScrapeModal'));
+
+        loadAdmin();
+
+        fetch('/api/stats')
+            .then(r => r.json())
+            .then(data => {
+                document.getElementById('footer-product-count').textContent = data.total_products || 0;
+            })
+            .catch(() => {});
+    });
+
+    function loadAdmin() {
+        fetch('/api/admin/health')
+            .then(r => {
+                if (r.status === 401) {
+                    document.getElementById('admin-login-form').style.display = 'block';
+                    document.getElementById('admin-dashboard').style.display = 'none';
+                } else if (r.ok) {
+                    document.getElementById('admin-login-form').style.display = 'none';
+                    document.getElementById('admin-dashboard').style.display = 'block';
+                    loadAdminData();
+                }
+            })
+            .catch(() => {
+                document.getElementById('admin-login-form').style.display = 'block';
+                document.getElementById('admin-dashboard').style.display = 'none';
+            });
+    }
+
+    function adminLogin(e) {
+        e.preventDefault();
+        const username = document.getElementById('admin-username').value;
+        const password = document.getElementById('admin-password').value;
+        
+        fetch('/admin/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+            body: `username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`
+        })
+        .then(r => r.text())
+        .then(() => {
+            fetch('/api/admin/health')
+                .then(r => {
+                    if (r.ok) {
+                        document.getElementById('admin-login-form').style.display = 'none';
+                        document.getElementById('admin-dashboard').style.display = 'block';
+                        document.getElementById('admin-login-error').style.display = 'none';
+                        loadAdminData();
+                    } else {
+                        document.getElementById('admin-login-error').style.display = 'block';
+                    }
+                });
+        })
+        .catch(() => {
+            document.getElementById('admin-login-error').style.display = 'block';
+        });
+    }
+
+    function adminLogout() {
+        fetch('/admin/logout')
+            .then(() => {
+                document.getElementById('admin-login-form').style.display = 'block';
+                document.getElementById('admin-dashboard').style.display = 'none';
+            });
+    }
+
+    function refreshData() {
+        loadAdminData();
+        showToast('Refreshed', 'Data reloaded successfully', 'success');
+    }
+
+    function loadAdminData() {
+        loadHealth();
+        loadLogs();
+        loadAdminStats();
+        loadScrapeSourcePicker();
+        checkScrapeStatus();
+    }
+
+    function loadScrapeSourcePicker() {
+        fetch('/api/sources')
+            .then(r => r.json())
+            .then(sources => {
+                const picker = document.getElementById('scrape-source-picker');
+                const keys = Object.keys(sources);
+                if (keys.length === 0) {
+                    picker.innerHTML = '<div class="text-muted small">No stores configured</div>';
+                    return;
+                }
+                picker.innerHTML = `
+                    <label class="scrape-chip checked" id="chip-all">
+                        <input type="checkbox" id="scrape-select-all" checked onchange="toggleAllSources(this.checked)">
+                        <span>All stores <span class="source-count">(${keys.length})</span></span>
+                    </label>
+                ` + Object.entries(sources).map(([key, s]) => `
+                    <label class="scrape-chip checked" data-key="${key}">
+                        <input type="checkbox" class="scrape-source-check" value="${key}" checked onchange="onSourceCheckChange(this)">
+                        <span>${s.label}</span>
+                        <span class="source-count">${s.country || ''}</span>
+                    </label>
+                `).join('');
+            })
+            .catch(() => {
+                document.getElementById('scrape-source-picker').innerHTML =
+                    '<div class="text-danger small">Could not load store list</div>';
+            });
+    }
+
+    function onSourceCheckChange(input) {
+        input.closest('.scrape-chip').classList.toggle('checked', input.checked);
+        const all = document.querySelectorAll('.scrape-source-check');
+        const checkedCount = document.querySelectorAll('.scrape-source-check:checked').length;
+        const allChip = document.getElementById('chip-all');
+        const allBox = document.getElementById('scrape-select-all');
+        allBox.checked = checkedCount === all.length;
+        allChip.classList.toggle('checked', allBox.checked);
+    }
+
+    function toggleAllSources(checked) {
+        document.querySelectorAll('.scrape-source-check').forEach(cb => {
+            cb.checked = checked;
+            cb.closest('.scrape-chip').classList.toggle('checked', checked);
+        });
+        document.getElementById('chip-all').classList.toggle('checked', checked);
+    }
+
+    function getSelectedSources() {
+        return Array.from(document.querySelectorAll('.scrape-source-check:checked')).map(cb => cb.value);
+    }
+
+    function loadHealth() {
+        fetch('/api/admin/health')
+            .then(r => r.json())
+            .then(data => {
+                const tbody = document.getElementById('health-tbody');
+                if (data.health && data.health.length > 0) {
+                    tbody.innerHTML = data.health.map(h => `
+                        <tr>
+                            <td><strong>${h.label}</strong></td>
+                            <td>${h.country || 'N/A'}</td>
+                            <td><span class="status-badge ${h.status}">${h.status}</span></td>
+                            <td>${h.product_count}</td>
+                            <td>${h.last_successful_scrape || 'Never'}</td>
+                            <td>
+                                <button class="btn btn-outline-danger btn-sm" onclick="clearSource('${h.source}')" title="Clear products">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                                <button class="btn btn-outline-accent btn-sm" onclick="scrapeSource('${h.source}')" title="Scrape this store">
+                                    <i class="bi bi-cloud-download"></i>
+                                </button>
+                            </td>
+                        </tr>
+                    `).join('');
+                } else {
+                    tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">No health data</td></tr>';
+                }
+            })
+            .catch(() => {
+                document.getElementById('health-tbody').innerHTML = 
+                    '<tr><td colspan="6" class="text-center text-danger">Error loading health data</td></tr>';
+            });
+    }
+
+    function loadLogs() {
+        fetch('/api/admin/logs?limit=25')
+            .then(r => r.json())
+            .then(data => {
+                const tbody = document.getElementById('logs-tbody');
+                if (data.logs && data.logs.length > 0) {
+                    tbody.innerHTML = data.logs.map(log => `
+                        <tr>
+                            <td><strong>${log.source}</strong></td>
+                            <td><span class="status-badge ${log.status}">${log.status}</span></td>
+                            <td>${log.products_found || 0}</td>
+                            <td>${log.duration_seconds ? log.duration_seconds.toFixed(1) + 's' : 'N/A'}</td>
+                            <td>${log.started_at || 'N/A'}</td>
+                            <td class="text-muted small">${log.message || ''}</td>
+                        </tr>
+                    `).join('');
+                } else {
+                    tbody.innerHTML = '<tr><td colspan="6" class="text-center text-muted">No logs available</td></tr>';
+                }
+            })
+            .catch(() => {
+                document.getElementById('logs-tbody').innerHTML = 
+                    '<tr><td colspan="6" class="text-center text-danger">Error loading logs</td></tr>';
+            });
+    }
+
+    function loadAdminStats() {
+        fetch('/api/stats')
+            .then(r => r.json())
+            .then(data => {
+                document.getElementById('stat-total-products').textContent = data.total_products || 0;
+                document.getElementById('stat-total-stores').textContent = data.total_stores || 0;
+                document.getElementById('stat-avg-discount').textContent = (data.avg_discount || 0) + '%';
+                document.getElementById('stat-last-scrape').textContent = data.last_scrape || 'Never';
+                
+                document.getElementById('admin-stats-summary').innerHTML = `
+                    <strong>${data.total_products || 0}</strong> products · 
+                    <strong>${data.total_stores || 0}</strong> stores · 
+                    ${data.avg_discount || 0}% avg discount
+                `;
+            })
+            .catch(() => {
+                document.getElementById('admin-stats-summary').textContent = 'Error loading stats';
+            });
+    }
+
+    function triggerScrape() {
+        const selected = getSelectedSources();
+        if (selected.length === 0) {
+            document.getElementById('scrape-status-text').textContent = 'Pick at least one store first.';
+            return;
+        }
+        const isAll = document.getElementById('scrape-select-all').checked;
+        startScrapeJob(isAll ? { source: 'all' } : { sources: selected });
+    }
+
+    function triggerScrapeAll() {
+        toggleAllSources(true);
+        const allBox = document.getElementById('scrape-select-all');
+        if (allBox) allBox.checked = true;
+        startScrapeJob({ source: 'all' });
+    }
+
+    function triggerScrapeNew() {
+        customScrapeModal.show();
+    }
+
+    function triggerCustomScrape() {
+        const url = document.getElementById('custom-url-input').value.trim();
+        if (!url) {
+            showToast('Error', 'Please enter a URL', 'danger');
+            return;
+        }
+        const maxPages = parseInt(document.getElementById('custom-max-pages').value) || 50;
+        const label = document.getElementById('custom-label').value.trim() || undefined;
+        const renderJs = document.getElementById('custom-render-js').checked;
+
+        customScrapeModal.hide();
+
+        fetch('/api/scrape/custom', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ url, max_pages: maxPages, label, render_js: renderJs })
+        })
+        .then(r => r.json())
+        .then(data => {
+            showToast('Scrape Started', `Scraping ${url} with ${maxPages} pages max`, 'info');
+            // Refresh health after a delay
+            setTimeout(() => loadHealth(), 5000);
+        })
+        .catch(() => {
+            showToast('Error', 'Failed to start custom scrape', 'danger');
+        });
+    }
+
+    function startScrapeJob(payload) {
+        const statusText = document.getElementById('scrape-status-text');
+        const progress = document.getElementById('scrape-progress');
+        const resultsDetail = document.getElementById('scrape-results-detail');
+        const resultsList = document.getElementById('scrape-results-list');
+        
+        resultsDetail.style.display = 'none';
+        resultsList.innerHTML = '';
+        progress.style.width = '0%';
+        statusText.innerHTML = '<span class="status-badge running">Starting</span> Starting scrape...';
+
+        const btn = document.querySelector('#scrape-status-text').closest('.admin-card').querySelector('.btn-accent');
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Scraping...';
+        }
+
+        fetch('/api/scrape', { 
+            method: 'POST', 
+            headers: { 'Content-Type': 'application/json' }, 
+            body: JSON.stringify(payload) 
+        })
+        .then(r => r.json())
+        .then(data => {
+            statusText.textContent = data.message || '✅ Scrape started!';
+            showToast('Scrape Started', data.message || 'Scrape job started', 'info');
+            checkScrapeStatus();
+        })
+        .catch(() => {
+            statusText.textContent = '❌ Failed to start scrape';
+            showToast('Error', 'Failed to start scrape', 'danger');
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="bi bi-lightning-charge-fill"></i> Scrape Selected';
+            }
+        });
+    }
+
+    function scrapeSource(source) {
+        fetch('/api/scrape', { 
+            method: 'POST', 
+            headers: { 'Content-Type': 'application/json' }, 
+            body: JSON.stringify({ source }) 
+        })
+        .then(() => {
+            showToast('Scraping', `Started scraping ${source}`, 'info');
+            setTimeout(loadHealth, 3000);
+        })
+        .catch(() => {
+            showToast('Error', `Failed to scrape ${source}`, 'danger');
+        });
+    }
+
+    function clearSource(source) {
+        if (!confirm(`Clear all products from ${source}? This cannot be undone.`)) return;
+        fetch(`/api/admin/clear/${source}`, { method: 'POST' })
+            .then(() => {
+                showToast('Cleared', `Cleared all products from ${source}`, 'warning');
+                loadHealth();
+            })
+            .catch(() => {
+                showToast('Error', `Failed to clear ${source}`, 'danger');
+            });
+    }
+
+    function clearAllData() {
+        if (!confirm('⚠️ Delete ALL products from ALL stores? This cannot be undone!')) return;
+        if (!confirm('Are you absolutely sure?')) return;
+        fetch('/api/admin/clear/all', { method: 'POST' })
+            .then(() => {
+                showToast('Cleared', 'All product data cleared', 'warning');
+                loadHealth();
+                loadAdminStats();
+            })
+            .catch(() => {
+                showToast('Error', 'Failed to clear data', 'danger');
+            });
+    }
+
+    function viewDatabaseStats() {
+        fetch('/api/admin/db/stats')
+            .then(r => r.json())
+            .then(data => {
+                const msg = `Total Products: ${data.total_products}\nTotal Stores: ${data.total_stores}\nDatabase Size: ${data.db_size || 'N/A'}`;
+                alert(msg);
+            })
+            .catch(() => {
+                showToast('Error', 'Could not fetch database stats', 'danger');
+            });
+    }
+
+    function checkScrapeStatus() {
+        if (adminScrapeInterval) clearInterval(adminScrapeInterval);
+        
+        const statusText = document.getElementById('scrape-status-text');
+        const progress = document.getElementById('scrape-progress');
+        const resultsDetail = document.getElementById('scrape-results-detail');
+        const resultsList = document.getElementById('scrape-results-list');
+        const btn = document.querySelector('#scrape-status-text').closest('.admin-card').querySelector('.btn-accent');
+        
+        let reportedSources = new Set();
+
+        adminScrapeInterval = setInterval(() => {
+            fetch('/api/scrape/status')
+                .then(r => r.json())
+                .then(data => {
+                    const sourceTally = data.total_sources
+                        ? ` (${data.sources_done || 0}/${data.total_sources} stores)`
+                        : '';
+
+                    progress.style.width = data.progress + '%';
+
+                    if (data.results && Object.keys(data.results).length > 0) {
+                        resultsDetail.style.display = 'block';
+                        let html = '';
+                        Object.entries(data.results).forEach(([key, result]) => {
+                            if (!reportedSources.has(key)) {
+                                reportedSources.add(key);
+                                const status = result.status || 'success';
+                                const count = result.count || 0;
+                                const time = result.finished_at ? 
+                                    new Date(result.finished_at).toLocaleTimeString() : 'just now';
+                                html += `
+                                    <div class="scrape-result-item">
+                                        <span>${result.label}</span>
+                                        <span>
+                                            <span class="status-badge ${status}">${status}</span>
+                                            ${count} products
+                                            <span class="text-muted">${time}</span>
+                                        </span>
+                                    </div>`;
+                            }
+                        });
+                        if (html) {
+                            resultsList.innerHTML = html + resultsList.innerHTML;
+                        }
+                    }
+
+                    if (data.running) {
+                        statusText.innerHTML = `<span class="status-badge running">Running</span> ${data.message}${sourceTally}`;
+                    } else if (data.message && data.message.includes('Done')) {
+                        // Final status - fetch all logs for final summary
+                        fetch('/api/admin/logs?limit=10')
+                            .then(r => r.json())
+                            .then(logData => {
+                                if (logData.logs && logData.logs.length > 0) {
+                                    const sourceLabels = {};
+                                    document.querySelectorAll('.scrape-source-check').forEach(cb => {
+                                        const chip = cb.closest('.scrape-chip');
+                                        sourceLabels[cb.value] = chip ? chip.querySelector('span').textContent : cb.value;
+                                    });
+                                    
+                                    let html = '';
+                                    logData.logs.slice(0, 8).forEach(log => {
+                                        const label = sourceLabels[log.source] || log.source;
+                                        if (!reportedSources.has(log.source)) {
+                                            reportedSources.add(log.source);
+                                            const status = log.status || 'success';
+                                            const count = log.products_found || 0;
+                                            const time = log.finished_at ? 
+                                                new Date(log.finished_at).toLocaleTimeString() : 'N/A';
+                                            html += `
+                                                <div class="scrape-result-item">
+                                                    <span>${label}</span>
+                                                    <span>
+                                                        <span class="status-badge ${status}">${status}</span>
+                                                        ${count} products
+                                                        <span class="text-muted">${time}</span>
+                                                    </span>
+                                                </div>`;
+                                        }
+                                    });
+                                    if (html) {
+                                        resultsList.innerHTML = html + resultsList.innerHTML;
+                                        resultsDetail.style.display = 'block';
+                                    }
+                                }
+                            })
+                            .catch(() => {});
+
+                        statusText.innerHTML = `<span class="status-badge success">Done</span> ${data.message}`;
+                        showToast('Scrape Complete', data.message, 'success');
+                        if (btn) {
+                            btn.disabled = false;
+                            btn.innerHTML = '<i class="bi bi-lightning-charge-fill"></i> Scrape Selected';
+                        }
+                        clearInterval(adminScrapeInterval);
+                        adminScrapeInterval = null;
+                        loadHealth();
+                        loadLogs();
+                        loadAdminStats();
+                    }
+
+                    if (!data.running && !data.message.includes('Done')) {
+                        clearInterval(adminScrapeInterval);
+                        adminScrapeInterval = null;
+                        if (btn) {
+                            btn.disabled = false;
+                            btn.innerHTML = '<i class="bi bi-lightning-charge-fill"></i> Scrape Selected';
+                        }
+                    }
+                })
+                .catch(() => {});
+        }, 1500);
+    }
+
+    // Toast notification system
+    function showToast(title, message, type = 'info') {
+        const container = document.getElementById('toast-container');
+        const toast = document.createElement('div');
+        toast.className = 'toast-custom';
+        toast.style.borderLeft = `4px solid ${type === 'success' ? 'var(--success)' : type === 'danger' ? 'var(--danger)' : type === 'warning' ? 'var(--warning)' : 'var(--accent)'}`;
+        toast.innerHTML = `
+            <div class="toast-title">${title}</div>
+            <div class="toast-message">${message}</div>
+        `;
+        container.appendChild(toast);
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transform = 'translateY(20px)';
+            toast.style.transition = 'all 0.3s ease';
+            setTimeout(() => toast.remove(), 300);
+        }, 4000);
+    }
+
+    // Source labels for logs
+    function getSourceLabels() {
+        const labels = {};
+        document.querySelectorAll('.scrape-source-check').forEach(cb => {
+            const chip = cb.closest('.scrape-chip');
+            labels[cb.value] = chip ? chip.querySelector('span').textContent : cb.value;
+        });
+        return labels;
+    }
+</script>
+
+</body>
+</html>
