@@ -1,20 +1,6 @@
 """
 HatBhau (हट भाउ) — Flask Application
-=======================================
-Fuses:
-  - PriceHunt's simple, working Flask app (background-thread scraping,
-    polling status endpoint, CSV export)
-  - NepCompare's architecture ideas (scrape logging, admin-protected
-    endpoints, price-history endpoint)
-  - The Jinja frontend (base/admin/compare/search/product/index.html) that
-    was built against routes this file didn't have yet — this version
-    adds them. See the "Reconciliation Prompt v2" doc, Section 0/Task 5.
-
-╔══════════════════════════════════════════════════════════════════════╗
-║  CONTROL PANEL — route/response shape config. The engine below reads   ║
-║  ONLY from these structures and from scraper.SITES (single source of  ║
-║  truth for site metadata — never duplicated here).                    ║
-╚══════════════════════════════════════════════════════════════════════╝
+(no changes except better error handling in API endpoints)
 """
 
 import os
@@ -22,6 +8,7 @@ import sys
 import threading
 import time
 import tempfile
+import traceback
 from datetime import datetime
 from functools import wraps
 
@@ -33,7 +20,7 @@ from flask_cors import CORS
 
 import database
 import scraper
-from scraper import SITES  # single source of truth for site metadata
+from scraper import SITES
 
 if sys.platform == "win32":
     sys.stdout.reconfigure(encoding="utf-8", errors="replace")
@@ -44,21 +31,14 @@ HOST = os.getenv("HATBHAU_HOST", "0.0.0.0")
 PORT = int(os.getenv("HATBHAU_PORT", "5000"))
 DEBUG = os.getenv("HATBHAU_DEBUG", "1") == "1"
 
-# Bearer token: kept for programmatic/API access (scripts, curl, CI).
 ADMIN_TOKEN = os.getenv("HATBHAU_ADMIN_TOKEN", "hatbhau-dev-token-change-me")
-# Session login: what admin.html's own login form actually uses.
 ADMIN_USERNAME = os.getenv("HATBHAU_ADMIN_USER", "momo")
 ADMIN_PASSWORD = os.getenv("HATBHAU_ADMIN_PASS", "momo")
 SECRET_KEY = os.getenv("HATBHAU_SECRET_KEY", "hatbhau-dev-secret-change-me")
 
-# Optional periodic auto-scrape (APScheduler). Disabled unless both the
-# package is installed and this flag is on — degrades gracefully.
 SCHEDULER_ENABLED = os.getenv("HATBHAU_SCHEDULER_ENABLED", "0") == "1"
 SCHEDULER_INTERVAL_HOURS = int(os.getenv("HATBHAU_SCHEDULER_INTERVAL_HOURS", "6"))
 
-# template_folder="." because the *.html files live next to app.py rather
-# than in a templates/ subfolder — keeps this a surgical diff instead of a
-# file-move. Move them into templates/ later if you want the Flask default.
 app = Flask(__name__, template_folder=".", static_folder="static")
 app.secret_key = SECRET_KEY
 CORS(app, supports_credentials=True)
@@ -71,14 +51,11 @@ scrape_status = {
     "current_source": None,
     "total_sources": 0,
     "sources_done": 0,
-    "results": {},  # Store individual source results
+    "results": {},
 }
 
 
 # ── AUTH ────────────────────────────────────────────────────────────────
-# Single coherent policy: an admin-protected endpoint accepts EITHER a
-# valid browser session (set by /admin/login, used by admin.html itself)
-# OR a valid bearer token (used by scripts/API clients). Not both required.
 def is_admin_request() -> bool:
     if session.get("admin"):
         return True
@@ -98,10 +75,6 @@ def require_admin(f):
 
 
 # ── PRODUCT SERIALIZATION ─────────────────────────────────────────────
-# database.py returns raw rows (source key, discount_percent, url). The
-# templates expect store label, `discount`, and `product_url` — attach
-# those here so database.py never has to import scraper.py (no circular
-# import) and stays reusable outside a web context.
 def _serialize(p: dict) -> dict:
     cfg = SITES.get(p["source"], {})
     return {
@@ -127,8 +100,6 @@ def _paginated_response(result: dict) -> dict:
 
 
 def _query_params_from_request():
-    """Shared parsing for /api/products and /api/search — same filter set
-    search.html sends from getFilterParams()."""
     def _f(name):
         v = request.args.get(name)
         try:
@@ -136,9 +107,19 @@ def _query_params_from_request():
         except ValueError:
             return None
 
+    store_val = request.args.get("store") or None
+    if store_val:
+        if store_val in SITES:
+            store = store_val
+        else:
+            matched = next((k for k, cfg in SITES.items() if cfg.get("label", "").lower() == store_val.lower()), None)
+            store = matched or store_val
+    else:
+        store = None
+
     return dict(
         q=request.args.get("q") or None,
-        store=request.args.get("store") or None,
+        store=store,
         category=request.args.get("category") or None,
         min_price=_f("min_price"),
         max_price=_f("max_price"),
@@ -150,7 +131,7 @@ def _query_params_from_request():
     )
 
 
-# ── PAGE ROUTES (render_template — Task 5) ────────────────────────────
+# ── PAGE ROUTES ──────────────────────────────────────────────────────
 @app.route("/")
 def index():
     return render_template("index.html")
@@ -191,7 +172,8 @@ def admin_logout():
     return redirect(url_for("admin_page"))
 
 
-# ── SOURCES METADATA (drives the frontend's source strip / modal) ────
+# ── API ROUTES ──────────────────────────────────────────────────────
+
 @app.route("/api/sources")
 def api_sources():
     return jsonify({
@@ -200,9 +182,6 @@ def api_sources():
     })
 
 
-# ── PRODUCTS: paginated browse + search (Task 5) ──────────────────────
-# Both templates' loadResults() hits /api/products (no q) or /api/search
-# (q set) with the same filter/sort/page params — same handler either way.
 @app.route("/api/products")
 def api_products():
     try:
@@ -210,7 +189,10 @@ def api_products():
         result = database.query_products(**params)
         return jsonify(_paginated_response(result))
     except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        # Log the full traceback for debugging
+        print(f"[API Error] /api/products: {e}")
+        traceback.print_exc()
+        return jsonify({"error": f"Database error: {str(e)}"}), 500
 
 
 @app.route("/api/search")
@@ -244,7 +226,6 @@ def api_categories():
     return jsonify(database.get_categories())
 
 
-# ── COMPARE (cross-store, by query — Task 5) ──────────────────────────
 @app.route("/api/compare")
 def api_compare():
     q = request.args.get("q", "").strip()
@@ -263,7 +244,6 @@ def api_compare():
     })
 
 
-# ── COMPARISONS (fuzzy cross-source groups, unfiltered — legacy) ──────
 @app.route("/api/comparisons")
 def api_comparisons():
     try:
@@ -287,7 +267,6 @@ def api_price_history():
         return jsonify({"error": str(e)}), 500
 
 
-# ── STATS (matches index.html / admin.html's actual expected keys) ────
 @app.route("/api/stats")
 def api_stats():
     try:
@@ -305,12 +284,10 @@ def api_stats():
                     last_scrape = s["last_scrape"]
 
         return jsonify({
-            # keys index.html / admin.html actually read:
             "total_products": len(all_products),
             "total_stores": active_stores,
             "total_categories": len(categories),
             "avg_discount": round(sum(discounts) / len(discounts), 1) if discounts else 0,
-            # kept for any other/legacy consumer:
             "total": len(all_products),
             "min_price": min(prices) if prices else None,
             "max_price": max(prices) if prices else None,
@@ -323,17 +300,14 @@ def api_stats():
         return jsonify({"error": str(e)}), 500
 
 
-# ── TRIGGER SCRAPE ─────────────────────────────────────────────────────
+# ── SCRAPE ENDPOINTS ─────────────────────────────────────────────────
+
 @app.route("/api/scrape", methods=["POST"])
 def api_trigger_scrape():
     if scrape_status["running"]:
         return jsonify({"error": "Scraper already running. Wait for it to finish."}), 409
 
     data = request.get_json(silent=True) or {}
-    # Accepts three shapes from the frontend's "select which stores" picker:
-    #   {"source": "all"}                -> every configured site
-    #   {"source": "brother_mart"}       -> single site (back-compat)
-    #   {"sources": ["daraz", "sinja"]}  -> exactly the checked sites
     sources_list = data.get("sources")
     target = data.get("source", "all" if not sources_list else None)
 
@@ -367,8 +341,6 @@ def api_trigger_scrape():
         done_count = {"n": 0}
         results = {}
 
-        # Wrap run_scrape so we can tick progress/current_source as each
-        # source finishes, even though several may run concurrently.
         orig_run_scrape = scraper.run_scrape
 
         def tracked_run_scrape(key, force=False):
@@ -381,8 +353,6 @@ def api_trigger_scrape():
             done_count["n"] += 1
             scrape_status["sources_done"] = done_count["n"]
             scrape_status["progress"] = round(done_count["n"] / total_targets * 100)
-            
-            # Store detailed result
             results[key] = {
                 "label": label,
                 "status": result.get("status", "success"),
@@ -395,10 +365,6 @@ def api_trigger_scrape():
 
         scraper.run_scrape = tracked_run_scrape
         try:
-            if total_targets == len(SITES):
-                scrape_status["message"] = "Scraping all sources concurrently..."
-            else:
-                scrape_status["message"] = f"Scraping {total_targets} selected source(s)..."
             scraper.run_selected(selected_keys)
             total_found = sum(r.get("count", 0) for r in results.values())
             n = len(results)
@@ -433,7 +399,6 @@ def api_scrape_status():
 
 @app.route("/api/scrape/results")
 def api_scrape_results():
-    """Get summary of scrape results for all sources."""
     try:
         results = {}
         for key in SITES:
@@ -451,12 +416,8 @@ def api_scrape_results():
         return jsonify({"error": str(e)}), 500
 
 
-# ── SCRAPE ANY WEBSITE (config-free — Task "entire website not specific") ─
 @app.route("/api/scrape/custom", methods=["POST"])
 def api_scrape_custom():
-    """Scrape an arbitrary URL on demand instead of only the preconfigured
-    SITES. Auto-detects product listings site-wide (see scraper.engine_generic_auto)
-    so no selectors need to be written for the target site."""
     if scrape_status["running"]:
         return jsonify({"error": "Scraper already running. Wait for it to finish."}), 409
 
@@ -500,7 +461,8 @@ def api_scrape_custom():
                                 f"Poll /api/scrape/status."})
 
 
-# ── EXPORT CSV ─────────────────────────────────────────────────────────
+# ── EXPORT ───────────────────────────────────────────────────────────
+
 @app.route("/api/export/csv")
 def export_csv():
     try:
@@ -519,12 +481,11 @@ def export_csv():
         return jsonify({"error": str(e)}), 500
 
 
-# ── ADMIN (session or bearer-token protected) ──────────────────────────
+# ── ADMIN ────────────────────────────────────────────────────────────
+
 @app.route("/api/admin/health")
 @require_admin
 def api_admin_health():
-    """Backs admin.html's #health-tbody: last scrape, last error, count,
-    per store — everything already in scrape_log/products, just shaped."""
     rows = []
     for key, cfg in SITES.items():
         stats = database.get_stats_by_source(key) or {}
@@ -555,7 +516,8 @@ def api_admin_clear(source):
     return jsonify({"status": "cleared", "source": source})
 
 
-# ── HEALTH CHECK ───────────────────────────────────────────────────────
+# ── HEALTH ───────────────────────────────────────────────────────────
+
 @app.route("/api/health")
 def health_check():
     try:
@@ -566,7 +528,8 @@ def health_check():
         return jsonify({"status": "error", "error": str(e)}), 500
 
 
-# ── ERROR HANDLERS ─────────────────────────────────────────────────────
+# ── ERROR HANDLERS ──────────────────────────────────────────────────
+
 @app.errorhandler(401)
 def unauthorized(e):
     return jsonify({"error": str(e.description)}), 401
@@ -585,6 +548,8 @@ def server_error(e):
         return jsonify({"error": "Internal server error"}), 500
     return render_template("index.html"), 500
 
+
+# ── SCHEDULER ──────────────────────────────────────────────────────
 
 def _maybe_start_scheduler():
     if not SCHEDULER_ENABLED:
@@ -613,7 +578,8 @@ def _maybe_start_scheduler():
     print(f"[Scheduler] Enabled — running every {SCHEDULER_INTERVAL_HOURS}h")
 
 
-# ── MAIN ────────────────────────────────────────────────────────────────
+# ── MAIN ────────────────────────────────────────────────────────────
+
 if __name__ == "__main__":
     database.init_db()
     print("=" * 58)

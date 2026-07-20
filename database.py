@@ -1,15 +1,6 @@
 """
 HatBhau (हट भाउ) — Database Layer
-=================================
-Config-driven SQLite persistence. Fuses:
-  - PriceHunt's lightweight sqlite3 approach (no ORM, fast, single-file DB)
-  - NepCompare's richer schema ideas: price history, scrape logs, per-source stats
-  - A fuzzy cross-source phone-matching engine for price comparisons
-
-╔══════════════════════════════════════════════════════════════════════╗
-║  CONTROL PANEL — everything site/schema-specific lives here.          ║
-║  The engine code below reads ONLY from these structures.              ║
-╚══════════════════════════════════════════════════════════════════════╝
+Simplified: uses LIKE for search (indexed), no FTS5 to avoid errors.
 """
 
 import re
@@ -18,57 +9,49 @@ from datetime import datetime, timezone
 from difflib import SequenceMatcher
 from typing import Dict, List, Optional
 
-# ── DATABASE FILE ─────────────────────────────────────────────────────
+from scraper import SITES   # for label → key resolution
+
 DB_FILE = "hatbhau.db"
 
-# ── PRODUCT TABLE SCHEMA ──────────────────────────────────────────────
-# field_name -> SQL column definition. scraper.py's output dict keys MUST
-# match these field names exactly (minus 'id'/'scraped_at', which are
-# engine-managed). app.py and index.html read/render these same keys.
 PRODUCT_SCHEMA: Dict[str, str] = {
-    "id":               "INTEGER PRIMARY KEY AUTOINCREMENT",
-    "source":           "TEXT NOT NULL",           # site key, e.g. 'brother_mart'
-    "name":             "TEXT NOT NULL",
-    "price":            "REAL NOT NULL",
-    "currency":         "TEXT NOT NULL",
-    "original_price":   "REAL",
+    "id": "INTEGER PRIMARY KEY AUTOINCREMENT",
+    "source": "TEXT NOT NULL",
+    "name": "TEXT NOT NULL",
+    "price": "REAL NOT NULL",
+    "currency": "TEXT NOT NULL",
+    "original_price": "REAL",
     "discount_percent": "REAL",
-    "url":              "TEXT",
-    "image_url":        "TEXT",
-    "category":         "TEXT",
-    "rating":           "REAL",
-    "reviews":          "INTEGER",
-    "availability":     "TEXT",
-    "scraped_at":       "TEXT NOT NULL",
+    "url": "TEXT",
+    "image_url": "TEXT",
+    "category": "TEXT",
+    "rating": "REAL",
+    "reviews": "INTEGER",
+    "availability": "TEXT",
+    "scraped_at": "TEXT NOT NULL",
 }
-# Fields the scraper is expected to supply per product (rest are engine-managed)
 PRODUCT_INPUT_FIELDS = [f for f in PRODUCT_SCHEMA if f not in ("id", "scraped_at")]
 
-# ── PRICE HISTORY SCHEMA ──────────────────────────────────────────────
 PRICE_HISTORY_SCHEMA: Dict[str, str] = {
-    "id":           "INTEGER PRIMARY KEY AUTOINCREMENT",
-    "source":       "TEXT NOT NULL",
-    "url":          "TEXT NOT NULL",
-    "price":        "REAL NOT NULL",
-    "currency":     "TEXT NOT NULL",
-    "recorded_at":  "TEXT NOT NULL",
+    "id": "INTEGER PRIMARY KEY AUTOINCREMENT",
+    "source": "TEXT NOT NULL",
+    "url": "TEXT NOT NULL",
+    "price": "REAL NOT NULL",
+    "currency": "TEXT NOT NULL",
+    "recorded_at": "TEXT NOT NULL",
 }
 
-# ── SCRAPE LOG SCHEMA (admin / monitoring) ────────────────────────────
 SCRAPE_LOG_SCHEMA: Dict[str, str] = {
-    "id":                "INTEGER PRIMARY KEY AUTOINCREMENT",
-    "source":            "TEXT NOT NULL",
-    "status":            "TEXT NOT NULL",      # success | failed | partial
-    "products_found":    "INTEGER",
-    "message":           "TEXT",
-    "duration_seconds":  "REAL",
-    "started_at":        "TEXT NOT NULL",
-    "finished_at":       "TEXT",
+    "id": "INTEGER PRIMARY KEY AUTOINCREMENT",
+    "source": "TEXT NOT NULL",
+    "status": "TEXT NOT NULL",
+    "products_found": "INTEGER",
+    "message": "TEXT",
+    "duration_seconds": "REAL",
+    "started_at": "TEXT NOT NULL",
+    "finished_at": "TEXT",
 }
 
-# ── CROSS-SOURCE MATCHING CONFIG ──────────────────────────────────────
-# Brand keywords used to gate fuzzy matches (prevents unrelated phones
-# from being grouped just because their names are textually similar).
+# ── Fuzzy matching config (only for grouping, not for search) ──
 MATCH_BRANDS: List[str] = [
     "samsung", "apple", "iphone", "xiaomi", "redmi", "realme", "oppo",
     "vivo", "oneplus", "nokia", "motorola", "moto", "infinix", "itel",
@@ -81,18 +64,19 @@ MATCH_STOPWORDS = {
     "memory", "nepal", "india", "pakistan", "price", "the", "a", "an",
     "of", "for", "5g", "4g",
 }
-MATCH_SEQ_THRESHOLD = 0.82     # pure string-similarity threshold
-MATCH_TOKEN_THRESHOLD = 0.60   # token-overlap threshold (used together with seq)
+MATCH_SEQ_THRESHOLD = 0.82
+MATCH_TOKEN_THRESHOLD = 0.60
 MATCH_TOKEN_SEQ_FLOOR = 0.60
 
 
-# ══════════════════════════════════════════════════════════════════════
-# ENGINE — generic, reads only from the schemas/config above
-# ══════════════════════════════════════════════════════════════════════
-
 def get_conn() -> sqlite3.Connection:
-    conn = sqlite3.connect(DB_FILE)
+    """Return a connection with optimised PRAGMA settings and busy timeout."""
+    conn = sqlite3.connect(DB_FILE, timeout=10.0)   # 10s busy timeout
     conn.execute("PRAGMA journal_mode=WAL")
+    conn.execute("PRAGMA synchronous=NORMAL")
+    conn.execute("PRAGMA cache_size=-100000")          # 100MB cache
+    conn.execute("PRAGMA temp_store=MEMORY")
+    conn.execute("PRAGMA mmap_size=30000000000")       # 30GB
     conn.row_factory = sqlite3.Row
     return conn
 
@@ -116,12 +100,25 @@ def init_db():
             " id INTEGER PRIMARY KEY AUTOINCREMENT, group_id TEXT NOT NULL,"
             " product_id INTEGER NOT NULL, source TEXT NOT NULL)"
         )
+
+        # ── All essential indexes for fast filtering, sorting and searching ──
         conn.execute("CREATE INDEX IF NOT EXISTS idx_products_source ON products(source)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_products_price ON products(price)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_products_category ON products(category)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_products_discount ON products(discount_percent)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_products_rating ON products(rating)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_products_scraped_at ON products(scraped_at)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_products_name ON products(name)")   # for LIKE speed
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_products_url ON products(url)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_products_price_source ON products(price, source)")
+        conn.execute("CREATE INDEX IF NOT EXISTS idx_products_name_source ON products(name, source)")
         conn.execute("CREATE INDEX IF NOT EXISTS idx_history_url ON price_history(source, url)")
+
         conn.commit()
     print(f"[DB] Ready: {DB_FILE}")
 
+
+# ── CRUD operations ──────────────────────────────────────────────────────
 
 def clear_source(source: str):
     with get_conn() as conn:
@@ -131,18 +128,12 @@ def clear_source(source: str):
         )
         conn.execute("DELETE FROM products WHERE source=?", (source,))
         conn.commit()
+    _rebuild_groups()
 
 
 def save_products(source: str, products: List[dict]) -> dict:
-    """
-    Replace all products for `source`, record price-history deltas against
-    the previous snapshot, and log the scrape run. Product dicts must use
-    the keys listed in PRODUCT_INPUT_FIELDS (missing keys default to None).
-    """
     now = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
-
     with get_conn() as conn:
-        # Snapshot previous prices (by url) so we can log real price changes
         prev = {
             row["url"]: row["price"]
             for row in conn.execute(
@@ -251,7 +242,7 @@ def get_recent_scrape_logs(limit: int = 30) -> List[dict]:
             "SELECT * FROM scrape_log ORDER BY id DESC LIMIT ?", (limit,))]
 
 
-# ── FUZZY CROSS-SOURCE MATCHING ────────────────────────────────────────
+# ── FUZZY GROUPING (only used after saves, not during user search) ──
 
 def _normalise(name: str) -> str:
     s = name.lower()
@@ -278,10 +269,8 @@ def _phones_match(a: str, b: str) -> bool:
 
 
 def _rebuild_groups():
-    """Re-group all products across sources into cross-source comparison sets."""
     with get_conn() as conn:
         rows = conn.execute("SELECT id, name, source FROM products").fetchall()
-
     if not rows:
         return
 
@@ -329,7 +318,6 @@ def _rebuild_groups():
 
 
 def get_comparisons() -> List[dict]:
-    """Return groups (>=2 sources) with full product rows, sorted by price."""
     with get_conn() as conn:
         groups = conn.execute(
             "SELECT DISTINCT gm.group_id, pg.base_name FROM group_members gm "
@@ -337,7 +325,6 @@ def get_comparisons() -> List[dict]:
             "GROUP BY gm.group_id HAVING COUNT(DISTINCT gm.source) > 1 "
             "ORDER BY pg.created_at DESC"
         ).fetchall()
-
         comparisons = []
         for g in groups:
             members = conn.execute(
@@ -361,11 +348,7 @@ def get_comparisons() -> List[dict]:
         return comparisons
 
 
-# ── FRONTEND-FACING QUERY HELPERS ──────────────────────────────────────
-# Added for search.html / index.html / compare.html / product.html, which
-# expect paginated/filterable/browsable product data. These return raw rows
-# (source key, not a display label) — app.py's serializer attaches the
-# SITES label, so this module stays free of any import on scraper.py.
+# ── QUERY HELPERS (simple, reliable LIKE) ─────────────────────────────
 
 _SORT_MAP = {
     "updated": "scraped_at DESC",
@@ -381,18 +364,37 @@ def query_products(q: Optional[str] = None, store: Optional[str] = None,
                     max_price: Optional[float] = None, min_rating: Optional[float] = None,
                     min_discount: Optional[float] = None, sort_by: str = "updated",
                     page: int = 1, per_page: int = 20) -> dict:
-    """Paginated, filterable product listing. Backs both /api/products and
-    /api/search — pass q=None for browse-all, q='<term>' for search."""
+    """
+    Simple, reliable search using LIKE with an index on name.
+    All filters are applied in SQL.
+    """
     where, params = [], []
-    if q:
-        where.append("name LIKE ?")
-        params.append(f"%{q}%")
+
+    # Store filter: resolve label → key if needed
     if store:
-        where.append("source = ?")
-        params.append(store)
+        if store in SITES:
+            where.append("source = ?")
+            params.append(store)
+        else:
+            matched_key = None
+            for key, cfg in SITES.items():
+                if cfg.get("label", "").lower() == store.lower():
+                    matched_key = key
+                    break
+            if matched_key:
+                where.append("source = ?")
+                params.append(matched_key)
+            else:
+                where.append("source = ?")
+                params.append(store)
+
     if category:
-        where.append("category = ?")
-        params.append(category)
+        if category.lower() == "general":
+            where.append("(category IS NULL OR category = '' OR category = 'General')")
+        else:
+            where.append("category = ?")
+            params.append(category)
+
     if min_price is not None:
         where.append("price >= ?")
         params.append(min_price)
@@ -406,6 +408,11 @@ def query_products(q: Optional[str] = None, store: Optional[str] = None,
         where.append("discount_percent >= ?")
         params.append(min_discount)
 
+    # Search term: use LIKE (with index)
+    if q:
+        where.append("name LIKE ?")
+        params.append(f"%{q}%")
+
     where_sql = f"WHERE {' AND '.join(where)}" if where else ""
     order_sql = _SORT_MAP.get(sort_by, _SORT_MAP["updated"])
     per_page = max(1, min(per_page, 100))
@@ -414,7 +421,9 @@ def query_products(q: Optional[str] = None, store: Optional[str] = None,
     with get_conn() as conn:
         total = conn.execute(f"SELECT COUNT(*) AS c FROM products {where_sql}", params).fetchone()["c"]
         rows = conn.execute(
-            f"SELECT * FROM products {where_sql} ORDER BY {order_sql} LIMIT ? OFFSET ?",
+            f"SELECT id, name, price, original_price, discount_percent, "
+            f"image_url, source, category, rating, availability, scraped_at "
+            f"FROM products {where_sql} ORDER BY {order_sql} LIMIT ? OFFSET ?",
             params + [per_page, (page - 1) * per_page],
         ).fetchall()
 
@@ -445,8 +454,6 @@ def get_price_history_by_id(product_id: int) -> List[dict]:
 
 
 def compare_query(q: str) -> dict:
-    """All products matching `q` (name substring) across every source,
-    grouped by source key, cheapest-first. app.py relabels source->store."""
     with get_conn() as conn:
         rows = conn.execute(
             "SELECT * FROM products WHERE name LIKE ? ORDER BY price ASC", (f"%{q}%",)

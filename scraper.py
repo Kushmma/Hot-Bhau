@@ -21,6 +21,11 @@ from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.chrome.options import Options
+from selenium.common.exceptions import (
+    TimeoutException,
+    ElementClickInterceptedException,
+    StaleElementReferenceException,
+)
 from webdriver_manager.chrome import ChromeDriverManager
 
 import database
@@ -285,7 +290,6 @@ def _pick_image_attr(img_tag):
     if not img_tag:
         return None
         
-    # Check if it's a picture element or has srcset
     if img_tag.name == "picture":
         sources = img_tag.find_all("source")
         for source in sources:
@@ -295,7 +299,6 @@ def _pick_image_attr(img_tag):
                 if first_url and not first_url.startswith("data:"):
                     return first_url
     
-    # Try all lazy load attributes
     for attr in _LAZY_IMG_ATTRS:
         val = img_tag.get(attr)
         if not val:
@@ -536,7 +539,7 @@ def _get_status_message():
     global _current_scrape_status
     if not _current_scrape_status["running"]:
         if _current_scrape_status["completed_stores"] == len(_current_scrape_status["store_status"]) and len(_current_scrape_status["store_status"]) > 0:
-            return "✅ All stores scraped successfully!"
+            return "All stores scraped successfully!"
         return "Scrape completed with some issues"
     
     current = _current_scrape_status["current_store"]
@@ -545,8 +548,8 @@ def _get_status_message():
     
     if current:
         label = SITES.get(current, {}).get("label", current)
-        return f"🔄 Scraping {label}... ({done}/{total} stores complete)"
-    return f"🔄 Scraping in progress... ({done}/{total} stores complete)"
+        return f"Scraping {label}... ({done}/{total} stores complete)"
+    return f"Scraping in progress... ({done}/{total} stores complete)"
 
 
 def reset_scrape_status():
@@ -562,106 +565,6 @@ def reset_scrape_status():
         "started_at": None,
         "progress": 0,
     }
-
-
-# ── JS extractor used for PriceOye ─────────────────────────────────────────
-
-PRICEOYE_EXTRACT_JS = r"""
-const results = [];
-const seen    = new Set();
-const MIN     = 5000, MAX = 300000;
-const CARD_SELS = [
-    '.productCard', '.product-item', '.item-card',
-    '[class*="ProductCard"]', '[class*="product-card"]',
-    '[class*="listing"]', 'li[class*="item"]',
-    '.pListingsSection li', '.categoryListing li',
-    '.search-results li', '[data-product]',
-];
-const NAME_SELS = [
-    'h3', 'h2', '.productTitle', '[class*="title"]',
-    '[class*="name"]', '[class*="Title"]', 'a[title]',
-];
-const PRICE_SELS = [
-    '.price', '[class*="price"]', '[class*="Price"]',
-    '[class*="amount"]', '[class*="cost"]', 'strong', 'b',
-];
-function extractText(el, sels) {
-    for (const s of sels) {
-        const e = el.querySelector(s);
-        if (e) {
-            const t = (e.innerText || e.textContent || e.getAttribute('title') || '').trim();
-            if (t) return t;
-        }
-    }
-    return (el.innerText || el.textContent || '').trim().split('\n')[0].trim();
-}
-function extractPrice(el) {
-    for (const s of PRICE_SELS) {
-        const e = el.querySelector(s);
-        if (e) {
-            const txt = (e.innerText || e.textContent || '').replace(/,/g, '');
-            const m   = txt.match(/\b(\d{4,6})\b/);
-            if (m) { const v = parseInt(m[1]); if (v >= MIN && v <= MAX) return v; }
-        }
-    }
-    const raw = (el.innerText || el.textContent || '').replace(/,/g, '');
-    const matches = raw.match(/\b(\d{4,6})\b/g) || [];
-    for (const m of matches) { const v = parseInt(m); if (v >= MIN && v <= MAX) return v; }
-    return null;
-}
-function extractUrl(el) {
-    const a = el.querySelector('a[href]') || el.closest('a[href]');
-    if (a) { const href = a.getAttribute('href') || ''; return href.startsWith('http') ? href : 'https://priceoye.pk' + href; }
-    return null;
-}
-const IMG_ATTRS = ['src', 'data-src', 'data-lazy-src', 'data-original', 'data-echo', 'data-lazy', 'srcset', 'data-srcset'];
-function extractImage(el) {
-    const img = el.querySelector('img');
-    if (!img) return null;
-    for (const attr of IMG_ATTRS) {
-        let val = img.getAttribute(attr);
-        if (!val) continue;
-        if (attr.includes('srcset')) val = val.split(',')[0].trim().split(' ')[0];
-        if (!val || val.startsWith('data:')) continue;
-        return val.startsWith('http') ? val : (val.startsWith('//') ? 'https:' + val : 'https://priceoye.pk' + val);
-    }
-    return null;
-}
-let found = false;
-for (const sel of CARD_SELS) {
-    const cards = document.querySelectorAll(sel);
-    if (cards.length >= 3) {
-        found = true;
-        cards.forEach(card => {
-            if (results.length >= 200) return;
-            const name  = extractText(card, NAME_SELS);
-            const price = extractPrice(card);
-            const url   = extractUrl(card);
-            const image = extractImage(card);
-            if (name && name.length >= 5 && name.length <= 150 && price) {
-                const key = name.toLowerCase();
-                if (!seen.has(key)) { seen.add(key); results.push({ name, price, url: url || '', image: image || '' }); }
-            }
-        });
-        if (results.length > 0) break;
-    }
-}
-if (!found || results.length < 5) {
-    document.querySelectorAll('a[href*="priceoye"]').forEach(a => {
-        if (results.length >= 200) return;
-        const name  = (a.getAttribute('title') || a.innerText || '').trim();
-        const container = a.closest('li, div, article') || a;
-        const price = extractPrice(container);
-        const url   = a.href;
-        const image = extractImage(container);
-        if (name && name.length >= 5 && name.length <= 150 && price) {
-            const key = name.toLowerCase();
-            if (!seen.has(key)) { seen.add(key); results.push({ name, price, url, image: image || '' }); }
-        }
-    });
-}
-return results;
-"""
 
 
 # ── ENHANCED ENGINES ────────────────────────────────────────────────────────
@@ -830,196 +733,396 @@ def engine_dom_scrape_all(key, cfg):
     return products
 
 
-def engine_brand_crawl_enhanced(key, cfg):
-    """Iterate all brands and ALL product pages."""
-    base = cfg["base_url"]
-    session = requests.Session()
-    headers = {"User-Agent": UA, "Accept-Language": "en-US,en;q=0.9", "Referer": base + "/"}
+def engine_yantra_nepal(key, cfg):
+    """
+    Dedicated engine for Yantra Nepal using BeautifulSoup to scrape products
+    from paginated pages (1-7) with duplicate handling.
+    """
+    base_url = cfg["base_url"]
+    products = []
+    seen = set()
     
-    skip_re = re.compile(cfg.get("skip_name_regex", r"$^"), re.IGNORECASE)
-    products, seen = [], set()
+    total_pages = 7
     
-    for brand_name, slug in cfg["brands"]:
-        page = 1
-        brand_products = 0
+    try:
+        safe(f"[{key}] Starting Yantra Nepal scraper for {total_pages} pages...")
+        headers = {
+            "User-Agent": UA,
+            "Accept-Language": "en-US,en;q=0.9",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+        }
         
-        while True:
-            if page == 1:
-                url = base + cfg["brand_path_template"].format(slug=slug)
+        for page_num in range(1, total_pages + 1):
+            if page_num == 1:
+                url = "https://yantranepal.com/mobile-price-in-nepal/"
             else:
-                url = base + cfg["brand_path_template"].format(slug=slug) + f"/page-{page}"
+                url = f"https://yantranepal.com/mobile-price-in-nepal/?_paged={page_num}"
+            
+            safe(f"[{key}] Fetching page {page_num}: {url}")
             
             try:
-                safe(f"[{key}] {brand_name} page {page}: {url}")
-                r = session.get(url, headers=headers, timeout=25)
-                if r.status_code != 200:
-                    if page == 1:
-                        safe(f"[{key}] {brand_name}: HTTP {r.status_code}")
-                    break
-                    
-                soup = BeautifulSoup(r.text, "html.parser")
-                containers = []
-                for sel in cfg["container_selectors"]:
-                    containers = soup.select(sel)
-                    if containers:
-                        break
+                response = requests.get(url, headers=headers, timeout=20)
+                if response.status_code != 200:
+                    note_issue(key, f"Page {page_num}: HTTP {response.status_code}")
+                    continue
                 
-                if not containers:
-                    containers = [li for li in soup.select("li, div.product, div.item") 
-                                 if li.get_text(strip=True) and re.search(r"[\d,]{4,}", li.get_text())]
+                soup = BeautifulSoup(response.content, "html.parser")
+                page_products = 0
                 
-                if not containers:
-                    break
+                # Find all product containers
+                potential_containers = soup.find_all("div", class_=lambda c: c and (
+                    "product" in str(c).lower() or 
+                    "item" in str(c).lower() or
+                    "additional" in str(c).lower() or
+                    "info" in str(c).lower()
+                ))
                 
-                count = 0
-                for item in containers:
-                    name = _extract_by_selector_chain(item, cfg["name_selectors"])
-                    if not name or len(name) < 5 or skip_re.search(name):
-                        continue
-                    price_text = _extract_by_selector_chain(item, cfg["price_selectors"]) or item.get_text()
-                    price = parse_price(price_text, *cfg["price_range"])
-                    if not price:
-                        continue
-                    href = make_absolute(base, _extract_by_selector_chain(item, ["a"], get_attr="href"))
-                    image = _extract_image(item, cfg.get("image_selectors"), base)
-                    key_ = name.lower().strip()
-                    if key_ not in seen:
-                        seen.add(key_)
+                # If no containers found, try broader approach
+                if not potential_containers or len(potential_containers) < 3:
+                    all_divs = soup.find_all("div")
+                    for div in all_divs:
+                        div_text = div.get_text(strip=True)
+                        if re.search(r'Rs\.\s*[\d,]+\.?\d*', div_text):
+                            if len(div_text) > 20:
+                                parent = div.parent
+                                is_filter = False
+                                if parent:
+                                    parent_text = parent.get_text(strip=True)
+                                    if "filter" in parent_text.lower() or "price" in parent_text.lower() and len(parent_text) < 100:
+                                        is_filter = True
+                                if not is_filter:
+                                    potential_containers.append(div)
+                
+                # If still no containers, try main content
+                if not potential_containers or len(potential_containers) < 3:
+                    main_content = soup.find("main") or soup.find("div", class_="content") or soup.find("div", id="content")
+                    if main_content:
+                        price_elements = main_content.find_all(string=re.compile(r'Rs\.\s*[\d,]+\.?\d*'))
+                        for elem in price_elements:
+                            parent = elem.parent
+                            container = parent
+                            for _ in range(5):
+                                if container and container.name in ['div', 'article', 'li', 'section']:
+                                    potential_containers.append(container)
+                                    break
+                                if container:
+                                    container = container.parent
+                
+                safe(f"[{key}] Page {page_num}: Found {len(potential_containers)} potential product containers")
+                
+                # Process each container
+                for container in potential_containers:
+                    try:
+                        container_text = container.get_text(strip=True)
+                        if any(skip in container_text.lower() for skip in ["filter", "sort", "showing", "page", "next", "previous"]):
+                            continue
+                        
+                        # Extract product name
+                        name = None
+                        name_selectors = [
+                            "h1", "h2", "h3", "h4", "h5",
+                            ".product-name", ".product-title", ".name", ".title",
+                            "[class*='product-name']", "[class*='product-title']",
+                            "[class*='name']", "[class*='title']",
+                            "strong", "b", "a[title]"
+                        ]
+                        
+                        for selector in name_selectors:
+                            elem = container.select_one(selector) if hasattr(container, 'select_one') else container.find(selector)
+                            if elem:
+                                text = elem.get_text(strip=True)
+                                if text and len(text) > 2 and not text.lower() in ['price', 'model', 'product', 'rs.', 'npr', 'additional information', 'warranty']:
+                                    name = text
+                                    break
+                        
+                        if not name:
+                            price_match = re.search(r'Rs\.\s*([\d,]+\.?\d*)', container_text)
+                            if price_match:
+                                name_part = container_text[:price_match.start()].strip()
+                                if name_part and len(name_part) > 2:
+                                    name = re.sub(r'\s+', ' ', name_part).strip()
+                                    name = re.sub(r'(?i)add to cart|quick view|view details|sale|new|buy now', '', name).strip()
+                        
+                        if not name:
+                            text_parts = [p for p in container_text.split('\n') if p.strip() and len(p.strip()) > 3]
+                            for part in text_parts:
+                                if not re.search(r'^[\d.,\s]+$', part) and not any(x in part.lower() for x in ['rs.', 'npr', 'filter', 'sort']):
+                                    name = part.strip()
+                                    break
+                        
+                        if not name or len(name) < 2:
+                            continue
+                        
+                        # Extract price
+                        price = None
+                        price_match = re.search(r'Rs\.?\s*([\d,]+\.?\d*)', container_text, re.IGNORECASE)
+                        if price_match:
+                            price_text = price_match.group(0)
+                            price = parse_price(price_text, *cfg["price_range"])
+                        
+                        if not price:
+                            price_selectors = [
+                                ".price", ".product-price", ".amount",
+                                "[class*='price']", "[class*='Price']",
+                                "[class*='amount']", "span.price",
+                                "span.amount", "span.currency"
+                            ]
+                            for selector in price_selectors:
+                                elem = container.select_one(selector) if hasattr(container, 'select_one') else container.find(selector)
+                                if elem:
+                                    price_text = elem.get_text(strip=True)
+                                    price = parse_price(price_text, *cfg["price_range"])
+                                    if price:
+                                        break
+                        
+                        if not price:
+                            all_prices = re.findall(r'Rs\.?\s*([\d,]+\.?\d*)', container_text, re.IGNORECASE)
+                            for p in all_prices:
+                                candidate = parse_price(p, *cfg["price_range"])
+                                if candidate:
+                                    price = candidate
+                                    break
+                        
+                        if not price:
+                            continue
+                        
+                        # Extract URL
+                        url_link = ""
+                        a_tag = container.find("a", href=True) if hasattr(container, 'find') else None
+                        if a_tag:
+                            url_link = make_absolute(base_url, a_tag.get("href", ""))
+                        else:
+                            links = container.select("a[href]") if hasattr(container, 'select') else container.find_all("a", href=True)
+                            for link in links:
+                                href = link.get("href", "")
+                                if href and not href.startswith("#") and not href.startswith("javascript:"):
+                                    url_link = make_absolute(base_url, href)
+                                    break
+                        
+                        # Extract image
+                        image = None
+                        img = container.find("img") if hasattr(container, 'find') else None
+                        if img:
+                            for attr in ["data-src", "src", "data-lazy-src", "data-original", "data-lazy"]:
+                                if img.get(attr):
+                                    image = make_absolute(base_url, img.get(attr))
+                                    break
+                        
+                        # Clean up name
+                        name = re.sub(r"\s+", " ", name).strip()
+                        name = re.sub(r"(?i)add to cart|quick view|view details|sale|new|buy now", "", name).strip()
+                        name = re.sub(r'Rs\.\s*[\d,]+\.?\d*', '', name).strip()
+                        name = re.sub(r'\b\d+\s*%', '', name).strip()
+                        name = re.sub(r'\s+', ' ', name).strip()
+                        
+                        if any(skip in name.lower() for skip in ["filter", "sort", "showing", "page", "next", "previous", "additional", "warranty"]):
+                            continue
+                        
+                        key_name = name.lower().strip()
+                        if key_name in seen or len(key_name) < 2:
+                            continue
+                        
+                        seen.add(key_name)
                         products.append({
-                            "name": name, 
-                            "price": price, 
-                            "url": href,
-                            "category": brand_name, 
-                            "image_url": image
+                            "name": name[:200],
+                            "price": price,
+                            "url": url_link or None,
+                            "image_url": image or None,
+                            "category": "Mobile Phones",
                         })
-                        count += 1
+                        page_products += 1
+                        
+                    except Exception as e:
+                        continue
                 
-                brand_products += count
-                safe(f"[{key}] {brand_name} page {page}: {count} phones")
+                safe(f"[{key}] Page {page_num}: Extracted {page_products} products (total {len(products)})")
                 
-                next_link = soup.select_one("a.next, a[rel='next'], .pagination-next a, .next-page")
-                if not next_link:
+                if page_products == 0 and page_num > 1:
+                    safe(f"[{key}] No products found on page {page_num}, stopping pagination")
                     break
-                    
-                page += 1
-                time.sleep(cfg.get("request_delay", 0.3))
+                
+                time.sleep(cfg.get("request_delay", 0.5))
                 
             except Exception as e:
-                note_issue(key, f"{brand_name} page {page}: {e}")
-                break
-                
-        safe(f"[{key}] {brand_name}: {brand_products} total products")
+                note_issue(key, f"Page {page_num} error: {e}")
+                safe(f"[{key}] Error on page {page_num}: {e}")
+                continue
         
+        safe(f"[{key}] Total: {len(products)} products from Yantra Nepal across {total_pages} pages")
+        
+    except Exception as e:
+        note_issue(key, f"Yantra Nepal scraper error: {e}")
+        safe(f"[{key}] Error: {e}")
+    
     return products
 
 
-def engine_selenium_js_enhanced(key, cfg):
-    """Enhanced Selenium JS extraction with pagination support."""
+def engine_gbn_store(key, cfg):
+    """
+    Dedicated engine for GBN Store (gbnstore.com).
+
+    The category pages (e.g. /category/smartphone) only server-render the
+    first 20 products; the rest load client-side when the "View more
+    products" button is clicked. This engine uses Selenium to click that
+    button repeatedly until the full catalogue for each configured category
+    is loaded, then parses the final DOM with BeautifulSoup.
+    """
+    base = cfg["base_url"]
     products = []
-    seen = set()
+    seen_urls = set()
+    seen_names = set()
+
+    category_urls = cfg.get("category_urls", [
+        "https://www.gbnstore.com/category/smartphone",
+    ])
+    max_clicks = cfg.get("max_load_more_clicks", 30)
+
     driver = None
-    
     try:
+        safe(f"[{key}] Starting GBN Store scraper...")
         driver = _get_driver()
-        
-        search_terms = cfg.get("search_terms", ["phone", "mobile", "smartphone"])
-        base_url = cfg["base_url"]
-        
-        for term in search_terms:
-            search_url = cfg["target_url"] + f"&search={quote_plus(term)}" if "?" in cfg["target_url"] else cfg["target_url"] + f"?search={quote_plus(term)}"
-            
-            safe(f"[{key}] Searching: {term}")
-            driver.get(search_url)
-            time.sleep(1.5)
-            
-            _human_scroll(driver, pause=0.3, max_steps=15)
-            _click_load_more(driver, max_clicks=15)
-            
-            raw = driver.execute_script(cfg["js_extractor"]) or []
-            safe(f"[{key}] '{term}' JS extractor returned {len(raw)} items")
-            
-            for item in raw:
-                name = str(item.get("name", "")).strip()
-                price = item.get("price")
-                if name and price:
-                    key_name = name.lower().strip()
-                    if key_name not in seen:
-                        seen.add(key_name)
-                        products.append({
-                            "name": name, 
-                            "price": price, 
-                            "url": item.get("url", ""),
-                            "image_url": item.get("image") or None,
-                            "category": term.title()
-                        })
-            
-            if len(raw) < 5 and cfg.get("dom_fallback"):
-                fb = cfg["dom_fallback"]
-                cards = []
-                for sel in fb["product_selectors"]:
-                    cards = driver.find_elements(By.CSS_SELECTOR, sel)
-                    if len(cards) >= 3:
-                        break
-                
-                for card in cards[:100]:
+
+        for category_url in category_urls:
+            category_name = category_url.rstrip("/").split("/")[-1].replace("-", " ").title()
+            safe(f"[{key}] {'='*50}")
+            safe(f"[{key}] Scraping category: {category_name}")
+            safe(f"[{key}] {'='*50}")
+
+            try:
+                driver.get(category_url)
+            except Exception as e:
+                note_issue(key, f"{category_name}: could not load page ({e})")
+                continue
+
+            try:
+                WebDriverWait(driver, 20).until(
+                    EC.presence_of_element_located((By.CSS_SELECTOR, "a[href*='/product/']"))
+                )
+            except TimeoutException:
+                note_issue(key, f"{category_name}: no products loaded (timeout)")
+                continue
+
+            # Repeatedly click "View more products" until everything is loaded
+            clicks = 0
+            while clicks < max_clicks:
+                cards_before = len(driver.find_elements(By.CSS_SELECTOR, "a[href*='/product/']"))
+
+                load_more = None
+                for el in driver.find_elements(By.XPATH, "//*[self::button or self::a or self::div]"):
                     try:
-                        html = BeautifulSoup(card.get_attribute("outerHTML"), "html.parser")
-                        name = _extract_by_selector_chain(html, fb["name_selectors"])
-                        if not name:
-                            continue
-                        price_text = _extract_by_selector_chain(html, fb["price_selectors"]) or card.text
-                        price = parse_price(price_text, *cfg["price_range"])
-                        if not name or not price:
-                            continue
-                        key_name = name.lower().strip()
-                        if key_name in seen:
-                            continue
-                        seen.add(key_name)
-                        href = ""
-                        try:
-                            a = card.find_element(By.CSS_SELECTOR, "a[href]")
-                            href = a.get_attribute("href") or ""
-                        except:
-                            pass
-                        image = _extract_image(html, cfg.get("image_selectors"), base_url)
-                        products.append({
-                            "name": name, 
-                            "price": price, 
-                            "url": href, 
-                            "image_url": image,
-                            "category": term.title()
-                        })
-                    except:
+                        if el.text.strip().lower() == "view more products":
+                            load_more = el
+                            break
+                    except StaleElementReferenceException:
                         continue
-        
-        safe(f"[{key}] Total: {len(products)} products")
-        
+
+                if load_more is None:
+                    break  # button gone -> everything is loaded
+
+                try:
+                    driver.execute_script("arguments[0].scrollIntoView({block:'center'});", load_more)
+                    time.sleep(0.3)
+                    load_more.click()
+                except ElementClickInterceptedException:
+                    try:
+                        driver.execute_script("arguments[0].click();", load_more)
+                    except Exception:
+                        break
+                except Exception:
+                    break
+
+                clicks += 1
+                time.sleep(1.5)
+
+                try:
+                    WebDriverWait(driver, 10).until(
+                        lambda d: len(d.find_elements(By.CSS_SELECTOR, "a[href*='/product/']")) > cards_before
+                    )
+                except TimeoutException:
+                    break
+
+            safe(f"[{key}] {category_name}: clicked 'View more products' {clicks} time(s)")
+
+            soup = BeautifulSoup(driver.page_source, "html.parser")
+            category_products = 0
+
+            for link in soup.select("a[href*='/product/']"):
+                href = link.get("href", "")
+                if "/product/" not in href:
+                    continue
+                product_url = make_absolute(base, href)
+                if product_url in seen_urls:
+                    continue
+                seen_urls.add(product_url)
+
+                # Walk up to the card container that holds price/stock info
+                card = link
+                for _ in range(6):
+                    if card.parent is None:
+                        break
+                    card = card.parent
+                    text = card.get_text(" ", strip=True)
+                    if "Rs." in text and len(text) < 400:
+                        break
+
+                card_text = card.get_text(" ", strip=True)
+
+                name = None
+                img = card.select_one("a[href*='/product/'] img")
+                if img and img.get("alt"):
+                    name = img["alt"].strip()
+                if not name:
+                    for a in card.select("a[href*='/product/']"):
+                        t = a.get_text(strip=True)
+                        if t and "view details" not in t.lower():
+                            name = t
+                            break
+                if not name or len(name) < 3:
+                    continue
+
+                prices = re.findall(r"Rs\.[\d,]+", card_text)
+                price, original_price = None, None
+                if prices:
+                    price = parse_price(prices[0], *cfg["price_range"])
+                    if len(prices) >= 2:
+                        original_price = parse_price(prices[1], *cfg["price_range"])
+                if not price:
+                    continue
+
+                key_name = name.lower().strip()
+                if key_name in seen_names:
+                    continue
+                seen_names.add(key_name)
+
+                availability = "In Stock"
+                if "Out of stock" in card_text:
+                    availability = "Out of Stock"
+
+                image = _extract_image(card, ["img"], base)
+
+                products.append({
+                    "name": name[:200],
+                    "price": price,
+                    "original_price": original_price,
+                    "url": product_url,
+                    "image_url": image,
+                    "category": category_name,
+                    "availability": availability,
+                })
+                category_products += 1
+
+            safe(f"[{key}] {category_name}: extracted {category_products} products")
+
     except Exception as e:
-        note_issue(key, f"Selenium engine failed to run: {e}")
+        note_issue(key, f"GBN Store scraper error: {e}")
+        safe(f"[{key}] Error: {e}")
     finally:
         if driver:
             driver.quit()
-            
+            safe(f"[{key}] Driver closed")
+
+    safe(f"[{key}] Total: {len(products)} products from GBN Store")
     return products
-
-
-def _make_crawl_session():
-    """Create a requests session with proper headers for crawling."""
-    session = requests.Session()
-    session.headers.update({
-        "User-Agent": UA,
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
-        "Accept-Language": "en-US,en;q=0.9",
-        "Accept-Encoding": "gzip, deflate, br",
-        "Connection": "keep-alive",
-        "Upgrade-Insecure-Requests": "1",
-        "Sec-Fetch-Dest": "document",
-        "Sec-Fetch-Mode": "navigate",
-        "Sec-Fetch-Site": "none",
-        "Sec-Fetch-User": "?1",
-        "Cache-Control": "max-age=0",
-    })
-    return session
 
 
 def engine_bfs_crawl_enhanced(key, cfg):
@@ -1027,15 +1130,12 @@ def engine_bfs_crawl_enhanced(key, cfg):
     base_url = cfg["base_url"]
     session = _make_crawl_session()
 
-    # Probe the root page first so a total block (Cloudflare challenge, DNS,
-    # SSL, timeout) is reported clearly instead of silently crawling nothing.
     try:
         probe = session.get(base_url, timeout=15)
         if probe.status_code != 200:
-            note_issue(key, f"root page returned HTTP {probe.status_code} "
-                             f"(Cloudflare/anti-bot block is likely)")
+            note_issue(key, f"root page returned HTTP {probe.status_code}")
         elif "cf-challenge" in probe.text.lower() or "checking your browser" in probe.text.lower():
-            note_issue(key, "root page served a Cloudflare JS challenge page instead of real HTML")
+            note_issue(key, "root page served a Cloudflare JS challenge page")
     except Exception as e:
         note_issue(key, f"could not reach root page {base_url}: {e}")
 
@@ -1142,8 +1242,27 @@ def engine_bfs_crawl_enhanced(key, cfg):
 
     safe(f"[{key}] crawled {page_count} pages -> {len(products)} products")
     if page_count > 0 and not products:
-        note_issue(key, f"crawled {page_count} pages but matched 0 products — name/price selectors likely no longer match the site's markup")
+        note_issue(key, f"crawled {page_count} pages but matched 0 products")
     return products
+
+
+def _make_crawl_session():
+    """Create a requests session with proper headers for crawling."""
+    session = requests.Session()
+    session.headers.update({
+        "User-Agent": UA,
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8",
+        "Accept-Language": "en-US,en;q=0.9",
+        "Accept-Encoding": "gzip, deflate, br",
+        "Connection": "keep-alive",
+        "Upgrade-Insecure-Requests": "1",
+        "Sec-Fetch-Dest": "document",
+        "Sec-Fetch-Mode": "navigate",
+        "Sec-Fetch-Site": "none",
+        "Sec-Fetch-User": "?1",
+        "Cache-Control": "max-age=0",
+    })
+    return session
 
 
 def engine_choicemandu(key, cfg):
@@ -1185,34 +1304,55 @@ def engine_choicemandu(key, cfg):
                 try:
                     safe(f"[{key}] Category {category} page {page}: {url}")
                     driver.get(url)
-                    time.sleep(2)
+                    time.sleep(3)
+                    
+                    _human_scroll(driver, pause=0.5, max_steps=20)
                     
                     try:
                         WebDriverWait(driver, 15).until(
-                            EC.presence_of_element_located((By.CSS_SELECTOR, "div.product-layout, .product-item, .product-card"))
+                            EC.presence_of_element_located((By.CSS_SELECTOR, "div.product-layout, .product-item, .product-card, .product-grid-item, .product-layout"))
                         )
                     except:
                         safe(f"[{key}] No products found on page {page}, might be last page")
                         break
-                    
-                    _human_scroll(driver, pause=0.5, max_steps=15)
                     
                     product_selectors = [
                         "div.product-layout",
                         ".product-item", 
                         ".product-card",
                         ".product",
+                        ".product-grid-item",
+                        ".product-layout",
                         "[class*='product-grid'] > div",
                         ".products-grid > div",
-                        ".product-list > div"
+                        ".product-list > div",
+                        "div[class*='product']",
+                        ".col-product",
+                        ".product-thumb"
                     ]
                     
                     cards = []
                     for selector in product_selectors:
-                        cards = driver.find_elements(By.CSS_SELECTOR, selector)
-                        if cards and len(cards) > 2:
-                            safe(f"[{key}] Found {len(cards)} cards with selector: {selector}")
-                            break
+                        try:
+                            elements = driver.find_elements(By.CSS_SELECTOR, selector)
+                            if elements and len(elements) > 2:
+                                cards = elements
+                                safe(f"[{key}] Found {len(cards)} cards with selector: {selector}")
+                                break
+                        except:
+                            continue
+                    
+                    if not cards:
+                        price_elements = driver.find_elements(By.XPATH, "//*[contains(text(), 'Rs.') or contains(text(), 'NPR')]")
+                        for elem in price_elements:
+                            try:
+                                parent = elem.find_element(By.XPATH, "./ancestor::div[position()<=5]")
+                                if parent:
+                                    cards.append(parent)
+                            except:
+                                pass
+                        if cards:
+                            safe(f"[{key}] Found {len(cards)} cards via price detection")
                     
                     if not cards:
                         safe(f"[{key}] No product cards found on page {page}")
@@ -1221,8 +1361,25 @@ def engine_choicemandu(key, cfg):
                     page_products = 0
                     for card in cards:
                         try:
-                            name_selectors = ["h4 a", "h2 a", "h3 a", ".product-title", ".product-name", "[class*='title'] a", "[class*='name'] a"]
-                            name = ""
+                            name = None
+                            
+                            name_selectors = [
+                                "h4 a", 
+                                "h2 a", 
+                                "h3 a", 
+                                ".product-title", 
+                                ".product-name", 
+                                "[class*='title'] a", 
+                                "[class*='name'] a",
+                                ".product-name a",
+                                "h4",
+                                "h3",
+                                ".product-title a",
+                                ".name a",
+                                "a.product-name",
+                                "a.name"
+                            ]
+                            
                             for sel in name_selectors:
                                 try:
                                     elem = card.find_element(By.CSS_SELECTOR, sel)
@@ -1237,17 +1394,37 @@ def engine_choicemandu(key, cfg):
                                     links = card.find_elements(By.CSS_SELECTOR, "a[href]")
                                     for link in links:
                                         text = link.text.strip()
-                                        if text and len(text) > 3:
+                                        if text and len(text) > 3 and not any(x in text.lower() for x in ["cart", "view", "shop", "add", "wishlist"]):
                                             name = text
                                             break
+                                except:
+                                    pass
+                            
+                            if not name:
+                                try:
+                                    title_elem = card.find_element(By.CSS_SELECTOR, "[title]")
+                                    name = title_elem.get_attribute("title").strip()
                                 except:
                                     pass
                             
                             if not name or len(name) < 3:
                                 continue
                             
-                            price_selectors = [".price", ".product-price", ".amount", "[class*='price']", "[class*='Price']"]
-                            price_text = ""
+                            price_selectors = [
+                                ".price", 
+                                ".product-price", 
+                                ".amount", 
+                                "[class*='price']", 
+                                "[class*='Price']",
+                                ".special-price",
+                                ".regular-price",
+                                ".price-box .price",
+                                ".product-price",
+                                ".price-amount",
+                                "[itemprop='price']"
+                            ]
+                            
+                            price_text = None
                             for sel in price_selectors:
                                 try:
                                     elem = card.find_element(By.CSS_SELECTOR, sel)
@@ -1279,10 +1456,30 @@ def engine_choicemandu(key, cfg):
                             except:
                                 pass
                             
-                            image = _extract_image(card, cfg.get("image_selectors"), base)
+                            image = _extract_choicemandu_image(card, base)
+                            
+                            if not image:
+                                try:
+                                    image = driver.execute_script("""
+                                        var card = arguments[0];
+                                        var img = card.querySelector('img');
+                                        if (img) {
+                                            var src = img.getAttribute('data-src') || img.getAttribute('src') || img.getAttribute('data-lazy-src');
+                                            if (src && !src.startsWith('data:')) return src;
+                                        }
+                                        return null;
+                                    """, card)
+                                except:
+                                    pass
+                            
+                            name = re.sub(r"\s+", " ", name).strip()
+                            name = re.sub(r"(?i)add to cart|quick view|view details|sale|new", "", name).strip()
+                            name = re.sub(r'Rs\.\s*[\d,]+\.?\d*', '', name).strip()
+                            name = re.sub(r'\b\d+\s*%', '', name).strip()
+                            name = re.sub(r'\s+', ' ', name).strip()
                             
                             key_name = name.lower().strip()
-                            if key_name not in seen:
+                            if key_name not in seen and len(key_name) > 3:
                                 seen.add(key_name)
                                 products.append({
                                     "name": name[:200],
@@ -1309,21 +1506,27 @@ def engine_choicemandu(key, cfg):
                             ".pagination-next a",
                             ".next-page", 
                             ".pagination .next",
-                            "[aria-label='Next']"
+                            "[aria-label='Next']",
+                            ".pagination li:last-child a",
+                            ".pagination a:last-child"
                         ]
                         next_found = False
                         for sel in next_selectors:
                             try:
                                 next_btn = driver.find_element(By.CSS_SELECTOR, sel)
                                 if next_btn.is_displayed() and next_btn.is_enabled():
-                                    next_found = True
-                                    break
+                                    class_attr = next_btn.get_attribute("class") or ""
+                                    if "disabled" not in class_attr and "inactive" not in class_attr:
+                                        text = next_btn.text.lower()
+                                        if "next" in text or ">" in text or "→" in text or "last" in text:
+                                            next_found = True
+                                            break
                             except:
                                 continue
                         
                         if not next_found and page_products > 0:
                             try:
-                                pagination = driver.find_elements(By.CSS_SELECTOR, ".pagination a, .page-numbers a")
+                                pagination = driver.find_elements(By.CSS_SELECTOR, ".pagination a, .page-numbers a, .pages a")
                                 if pagination:
                                     page_numbers = []
                                     for p in pagination:
@@ -1349,7 +1552,7 @@ def engine_choicemandu(key, cfg):
                             break
                     
                     page += 1
-                    time.sleep(0.5)
+                    time.sleep(1)
                     
                 except Exception as e:
                     safe(f"[{key}] {category} page {page}: error {e}")
@@ -1367,10 +1570,114 @@ def engine_choicemandu(key, cfg):
     return products
 
 
+def _extract_choicemandu_image(card, base_url=""):
+    """Specialized image extraction for Choicemandu using multiple methods."""
+    try:
+        img_selectors = [
+            "img",
+            ".product-image img",
+            ".product-img img",
+            "[class*='product-image'] img",
+            "[class*='product-img'] img",
+            "[class*='image'] img",
+            ".card-image img",
+            ".product-layout img",
+            "figure img",
+            ".product-thumb img",
+            ".product-item img"
+        ]
+        
+        for selector in img_selectors:
+            try:
+                img = card.find_element(By.CSS_SELECTOR, selector)
+                if img:
+                    for attr in ["src", "data-src", "data-lazy-src", "data-original", "data-lazy", "data-ks-lazyload"]:
+                        try:
+                            src = img.get_attribute(attr)
+                            if src and not src.startswith("data:") and "pixel" not in src.lower():
+                                if src.startswith("//"):
+                                    return "https:" + src
+                                if src.startswith("/"):
+                                    return base_url + src
+                                if src.startswith("http"):
+                                    return src
+                        except:
+                            continue
+                    
+                    try:
+                        srcset = img.get_attribute("srcset")
+                        if srcset:
+                            first_url = srcset.split(",")[0].strip().split(" ")[0]
+                            if first_url and not first_url.startswith("data:"):
+                                if first_url.startswith("//"):
+                                    return "https:" + first_url
+                                if first_url.startswith("/"):
+                                    return base_url + first_url
+                                return first_url
+                    except:
+                        pass
+            except:
+                continue
+        
+        try:
+            html = card.get_attribute("outerHTML")
+            soup = BeautifulSoup(html, "html.parser")
+            
+            for img in soup.find_all("img"):
+                for attr in ["data-src", "src", "data-lazy-src", "data-original", "data-lazy"]:
+                    src = img.get(attr)
+                    if src and not src.startswith("data:") and "pixel" not in src.lower():
+                        if src.startswith("//"):
+                            return "https:" + src
+                        if src.startswith("/"):
+                            return base_url + src
+                        if src.startswith("http"):
+                            return src
+        except:
+            pass
+        
+        try:
+            style = card.get_attribute("style")
+            if style and "background-image" in style:
+                match = re.search(r'url\(["\']?([^"\'\)]+)["\']?\)', style)
+                if match:
+                    url = match.group(1)
+                    if url and not url.startswith("data:"):
+                        if url.startswith("//"):
+                            return "https:" + url
+                        if url.startswith("/"):
+                            return base_url + url
+                        return url
+        except:
+            pass
+        
+        try:
+            children = card.find_elements(By.XPATH, ".//*")
+            for child in children:
+                try:
+                    for attr in ["data-src", "src", "data-lazy", "data-original"]:
+                        src = child.get_attribute(attr)
+                        if src and not src.startswith("data:") and "pixel" not in src.lower():
+                            if src.startswith("//"):
+                                return "https:" + src
+                            if src.startswith("/"):
+                                return base_url + src
+                            if src.startswith("http"):
+                                return src
+                except:
+                    continue
+        except:
+            pass
+            
+    except Exception as e:
+        pass
+    
+    return None
+
+
 def engine_dealayo(key, cfg):
     """
     Dedicated engine for Dealayo.com using Selenium to scrape all phone listings.
-    This replaces the fatafatsewa engine with a fully working Dealayo scraper.
     """
     base = cfg["base_url"]
     products = []
@@ -1382,18 +1689,16 @@ def engine_dealayo(key, cfg):
         safe(f"[{key}] Starting Dealayo scraper...")
         driver = _get_driver()
         
-        # Load the mobile page
         safe(f"[{key}] Loading Dealayo mobile page...")
         driver.get("https://dealayo.com/mobile.html")
         time.sleep(3)
         
-        # Handle popup if present
         try:
             close_btn = WebDriverWait(driver, 5).until(
                 EC.element_to_be_clickable((By.CSS_SELECTOR, "button.close, .modal-header .close, [data-dismiss='modal']"))
             )
             close_btn.click()
-            safe(f"[{key}] ✓ Popup closed")
+            safe(f"[{key}] Popup closed")
             time.sleep(1)
         except:
             safe(f"[{key}] No popup found")
@@ -1406,7 +1711,6 @@ def engine_dealayo(key, cfg):
             safe(f"[{key}] Page {page_num}")
             safe(f"[{key}] {'='*50}")
             
-            # Wait for products to load
             try:
                 WebDriverWait(driver, 10).until(
                     EC.presence_of_element_located((By.CSS_SELECTOR, ".product-item, .item, .product-card"))
@@ -1415,7 +1719,6 @@ def engine_dealayo(key, cfg):
                 safe(f"[{key}] No products found on page {page_num}")
                 break
             
-            # Find all products using multiple selectors
             product_selectors = [
                 ".product-item",
                 ".item", 
@@ -1442,7 +1745,6 @@ def engine_dealayo(key, cfg):
             
             for idx, product in enumerate(products_on_page, 1):
                 try:
-                    # Extract phone name
                     name = None
                     name_selectors = [
                         ".product-name",
@@ -1464,7 +1766,6 @@ def engine_dealayo(key, cfg):
                         except:
                             continue
                     
-                    # If name still not found, try any link
                     if not name:
                         try:
                             links = product.find_elements(By.TAG_NAME, "a")
@@ -1479,7 +1780,6 @@ def engine_dealayo(key, cfg):
                     if not name or len(name) < 3:
                         continue
                     
-                    # Extract price
                     price = None
                     price_selectors = [
                         ".price",
@@ -1504,14 +1804,12 @@ def engine_dealayo(key, cfg):
                             continue
                     
                     if not price:
-                        # Try to find any price in the card text
                         card_text = product.text
                         price = parse_price(card_text, *cfg["price_range"])
                     
                     if not price:
                         continue
                     
-                    # Extract URL
                     url_link = ""
                     try:
                         a_tag = product.find_element(By.CSS_SELECTOR, "a[href]")
@@ -1520,7 +1818,6 @@ def engine_dealayo(key, cfg):
                     except:
                         pass
                     
-                    # Extract image
                     image = None
                     try:
                         img = product.find_element(By.TAG_NAME, "img")
@@ -1532,7 +1829,6 @@ def engine_dealayo(key, cfg):
                     except:
                         pass
                     
-                    # Clean up name
                     name = re.sub(r"\s+", " ", name).strip()
                     name = re.sub(r"(?i)add to cart|quick view|view details", "", name).strip()
                     
@@ -1557,7 +1853,6 @@ def engine_dealayo(key, cfg):
                 safe(f"[{key}] No products on page {page_num}, stopping")
                 break
             
-            # Try to go to next page
             try:
                 next_selectors = [
                     ".next",
@@ -1573,11 +1868,9 @@ def engine_dealayo(key, cfg):
                     try:
                         next_btn = driver.find_element(By.CSS_SELECTOR, selector)
                         if next_btn and next_btn.is_enabled():
-                            # Check if it's disabled
                             class_attr = next_btn.get_attribute("class") or ""
                             if "disabled" not in class_attr and "inactive" not in class_attr:
                                 next_found = True
-                                # Scroll to button and click
                                 driver.execute_script("arguments[0].scrollIntoView(true);", next_btn)
                                 time.sleep(0.5)
                                 next_btn.click()
@@ -1589,7 +1882,7 @@ def engine_dealayo(key, cfg):
                         continue
                 
                 if not next_found:
-                    safe(f"[{key}] ✓ Reached last page or no next button found")
+                    safe(f"[{key}] Reached last page or no next button found")
                     break
                     
             except Exception as e:
@@ -1606,6 +1899,236 @@ def engine_dealayo(key, cfg):
             safe(f"[{key}] Driver closed")
     
     safe(f"[{key}] Total: {len(products)} products from Dealayo")
+    return products
+
+
+def engine_fatafatsewa(key, cfg):
+    """
+    Dedicated engine for Fatafatsewa.com to scrape all products.
+    """
+    base = cfg["base_url"]
+    products = []
+    seen = set()
+    
+    driver = None
+    
+    try:
+        safe(f"[{key}] Starting Fatafatsewa scraper...")
+        driver = _get_driver()
+        
+        safe(f"[{key}] Loading Fatafatsewa page...")
+        driver.get("https://fatafatsewa.com")
+        time.sleep(3)
+        
+        try:
+            close_btn = WebDriverWait(driver, 5).until(
+                EC.element_to_be_clickable((By.CSS_SELECTOR, "button.close, .modal-header .close, [data-dismiss='modal']"))
+            )
+            close_btn.click()
+            safe(f"[{key}] Popup closed")
+            time.sleep(1)
+        except:
+            safe(f"[{key}] No popup found")
+        
+        product_selectors = [
+            ".product-item",
+            ".product-card",
+            ".item",
+            ".product",
+            "[class*='product-item']",
+            "[class*='product-card']",
+            "[class*='ProductCard']",
+            ".grid-item",
+            ".listing-item",
+            ".product-layout",
+            ".product-grid-item"
+        ]
+        
+        _human_scroll(driver, pause=0.5, max_steps=20)
+        _click_load_more(driver, max_clicks=10)
+        _human_scroll(driver, pause=0.5, max_steps=10)
+        
+        products_on_page = []
+        for selector in product_selectors:
+            cards = driver.find_elements(By.CSS_SELECTOR, selector)
+            if cards and len(cards) > 0:
+                products_on_page = cards
+                safe(f"[{key}] Found {len(cards)} products with selector: {selector}")
+                break
+        
+        if not products_on_page:
+            safe(f"[{key}] No products found with standard selectors. Trying price detection...")
+            price_elements = driver.find_elements(By.XPATH, "//*[contains(text(), 'Rs.') or contains(text(), 'NPR') or contains(text(), 'रू')]")
+            for elem in price_elements:
+                try:
+                    parent = elem.find_element(By.XPATH, "./ancestor::div[position()<=5]")
+                    if parent:
+                        products_on_page.append(parent)
+                except:
+                    pass
+            if products_on_page:
+                safe(f"[{key}] Found {len(products_on_page)} potential products via price detection")
+        
+        if not products_on_page:
+            safe(f"[{key}] No products found on Fatafatsewa")
+            return products
+        
+        page_products_count = 0
+        
+        for idx, product in enumerate(products_on_page, 1):
+            try:
+                name = None
+                name_selectors = [
+                    ".product-name",
+                    ".product-title",
+                    "h1", "h2", "h3", "h4",
+                    ".name",
+                    ".title",
+                    "[class*='title']",
+                    "[class*='name']",
+                    "a[title]"
+                ]
+                
+                for selector in name_selectors:
+                    try:
+                        name_elem = product.find_element(By.CSS_SELECTOR, selector)
+                        name = name_elem.text.strip()
+                        if name:
+                            break
+                    except:
+                        continue
+                
+                if not name:
+                    try:
+                        links = product.find_elements(By.TAG_NAME, "a")
+                        for link in links:
+                            text = link.text.strip()
+                            if text and len(text) > 3:
+                                name = text
+                                break
+                    except:
+                        pass
+                
+                if not name:
+                    try:
+                        elem = product.find_element(By.CSS_SELECTOR, "[title]")
+                        name = elem.get_attribute("title").strip()
+                    except:
+                        pass
+                
+                if not name or len(name) < 3:
+                    continue
+                
+                price = None
+                price_selectors = [
+                    ".price",
+                    ".product-price",
+                    ".special-price",
+                    ".regular-price",
+                    "[class*='price']",
+                    "[class*='Price']",
+                    ".amount",
+                    ".currency",
+                    "span.price"
+                ]
+                
+                for selector in price_selectors:
+                    try:
+                        price_elem = product.find_element(By.CSS_SELECTOR, selector)
+                        price_text = price_elem.text.strip()
+                        if price_text:
+                            price = parse_price(price_text, *cfg["price_range"])
+                            if price:
+                                break
+                    except:
+                        continue
+                
+                if not price:
+                    card_text = product.text
+                    price = parse_price(card_text, *cfg["price_range"])
+                
+                if not price:
+                    continue
+                
+                url_link = ""
+                try:
+                    a_tag = product.find_element(By.CSS_SELECTOR, "a[href]")
+                    if a_tag:
+                        url_link = a_tag.get_attribute("href") or ""
+                except:
+                    pass
+                
+                image = None
+                try:
+                    img = product.find_element(By.TAG_NAME, "img")
+                    if img:
+                        for attr in ["src", "data-src", "data-original", "data-lazy", "data-lazy-src"]:
+                            if img.get_attribute(attr):
+                                image = make_absolute(base, img.get_attribute(attr))
+                                break
+                except:
+                    pass
+                
+                name = re.sub(r"\s+", " ", name).strip()
+                name = re.sub(r"(?i)add to cart|quick view|view details|sale|new", "", name).strip()
+                name = re.sub(r'Rs\.\s*[\d,]+\.?\d*', '', name).strip()
+                name = re.sub(r'\b\d+\s*%', '', name).strip()
+                name = re.sub(r'\s+', ' ', name).strip()
+                
+                key_name = name.lower().strip()
+                if key_name not in seen and len(key_name) > 3:
+                    seen.add(key_name)
+                    products.append({
+                        "name": name[:200],
+                        "price": price,
+                        "url": url_link or None,
+                        "image_url": image or None,
+                        "category": "Products",
+                    })
+                    page_products_count += 1
+                    
+            except Exception as e:
+                continue
+        
+        safe(f"[{key}] Extracted {page_products_count} products from Fatafatsewa")
+        
+        try:
+            load_more_selectors = [
+                "button.load-more",
+                ".load-more-btn",
+                "[class*='load-more']",
+                "[class*='loadMore']",
+                "a.load-more",
+                ".btn-load-more",
+                ".show-more",
+                "[aria-label='Next']",
+                ".pagination-next a",
+                "a.next"
+            ]
+            
+            for selector in load_more_selectors:
+                try:
+                    btn = driver.find_element(By.CSS_SELECTOR, selector)
+                    if btn.is_displayed() and btn.is_enabled():
+                        btn.click()
+                        time.sleep(2)
+                        safe(f"[{key}] Clicked load more button")
+                        break
+                except:
+                    continue
+        except:
+            pass
+                
+    except Exception as e:
+        note_issue(key, f"Fatafatsewa scraper error: {e}")
+        safe(f"[{key}] Error: {e}")
+    
+    finally:
+        if driver:
+            driver.quit()
+            safe(f"[{key}] Driver closed")
+    
+    safe(f"[{key}] Total: {len(products)} products from Fatafatsewa")
     return products
 
 
@@ -1680,7 +2203,7 @@ def engine_table_heading_enhanced(key, cfg):
                             "price": price, 
                             "category": current_brand, 
                             "url": None,
-                            "image_url": _extract_image(soup, cfg.get("image_selectors"), base)
+                            "image_url": _extract_image(row, cfg.get("image_selectors"), base)
                         })
                         page_products += 1
 
@@ -1706,7 +2229,7 @@ def engine_html_search_enhanced(key, cfg):
             try:
                 r = fetch_with_retry(url, headers=rotating_headers({"Referer": cfg["base_url"] + "/"}))
                 if r.status_code != 200:
-                    note_issue(key, f"'{term}' p{page}: HTTP {r.status_code} (likely bot-blocked)")
+                    note_issue(key, f"'{term}' p{page}: HTTP {r.status_code}")
                     break
             except Exception as e:
                 note_issue(key, f"'{term}' p{page}: fetch failed ({e})")
@@ -1719,8 +2242,7 @@ def engine_html_search_enhanced(key, cfg):
                 if cards:
                     break
             if not cards:
-                note_issue(key, f"'{term}' p{page}: 0 cards matched product_selectors "
-                                 f"(page fetched OK — content is likely rendered client-side via JS)")
+                note_issue(key, f"'{term}' p{page}: 0 cards matched product_selectors")
                 break
 
             found_this_page = 0
@@ -1819,6 +2341,12 @@ def engine_generic_auto_enhanced(key, cfg):
     page_count = 0
     driver = _get_driver() if render_js else None
 
+    _SKIP_LINK_WORDS = ("login", "register", "signup", "cart", "checkout", "wishlist", "help",
+                        "about", "contact", "privacy", "terms", "faq", "blog", "news",
+                        "media", "press", "careers", "jobs", "investor", "store-locator",
+                        "track-order", "return", "refund", "shipping", "payment")
+    _SKIP_LINK_EXTS = (".pdf", ".zip", ".doc", ".ppt", ".xls", ".mp3", ".mp4", ".avi", ".mov", ".wmv")
+
     try:
         while queue and page_count < max_pages:
             url = queue.popleft()
@@ -1886,6 +2414,74 @@ def engine_generic_auto_enhanced(key, cfg):
     return products
 
 
+def _auto_detect_cards(soup):
+    """Auto-detect product cards in a page."""
+    selectors = [
+        "[data-product-id]", ".product-item", ".product-card",
+        "[class*='product-item']", "[class*='ProductCard']",
+        "li[class*='product']", ".grid-product", ".product",
+        ".item", ".listing-item", ".product-layout"
+    ]
+    for sel in selectors:
+        cards = soup.select(sel)
+        if cards and len(cards) >= 3:
+            return cards
+    return []
+
+
+def _auto_extract_product(card, base_url, price_range):
+    """Auto-extract product from a card element."""
+    name_selectors = ["h2", "h3", "h4", "[class*='title']", "[class*='name']", "a[title]"]
+    price_selectors = ["[class*='price']", "[class*='Price']", ".price", ".money", "[data-price]"]
+    
+    name = _extract_by_selector_chain(card, name_selectors)
+    if not name or len(name) < 4:
+        return None
+    
+    price_text = _extract_by_selector_chain(card, price_selectors) or card.get_text()
+    price = parse_price(price_text, *price_range)
+    if not price:
+        return None
+    
+    url = make_absolute(base_url, _extract_by_selector_chain(card, ["a"], get_attr="href"))
+    image = _extract_image(card, ["img", ".product-image img", "[class*='image'] img"], base_url)
+    
+    return {
+        "name": name[:250],
+        "price": price,
+        "url": url,
+        "image_url": image,
+        "category": _extract_by_selector_chain(card, ["[class*='category']", "[class*='type']"])
+    }
+
+
+def _auto_extract_single_product_page(soup, url, base_url, price_range):
+    """Extract product from a single product page."""
+    name = soup.find("h1")
+    if name:
+        name = name.get_text(strip=True)
+    else:
+        name = _extract_by_selector_chain(soup, ["h2", "h3", "[class*='title']"])
+    
+    if not name or len(name) < 4:
+        return None
+    
+    price_text = _extract_by_selector_chain(soup, ["[class*='price']", ".price", ".money", "[data-price]"]) or soup.get_text()
+    price = parse_price(price_text, *price_range)
+    if not price:
+        return None
+    
+    image = _extract_image(soup, ["img", ".product-image img", "[class*='image'] img", "meta[property='og:image']"], base_url)
+    
+    return {
+        "name": name[:250],
+        "price": price,
+        "url": url,
+        "image_url": image,
+        "category": _extract_by_selector_chain(soup, ["[class*='category']", "[class*='type']"])
+    }
+
+
 # ── SITE CONFIGURATION ──────────────────────────────────────────────────────
 
 ENGINE_HEADLESS = True
@@ -1929,61 +2525,24 @@ SITES = {
             "image_selectors": ["img", ".product-image img", "[class*='image'] img"],
         },
     },
-    "91mobiles": {
-        "label": "91mobiles", "country": "India", "currency": "INR",
-        "engine": "brand_crawl_enhanced",
-        "base_url": "https://www.91mobiles.com",
-        "brand_path_template": "/list-of-phones/{slug}",
-        "price_range": (3000, 300000),
-        "request_delay": 0.3,
-        "brands": [
-            ("Samsung", "samsung-mobile-price-list-in-india"),
-            ("Xiaomi", "xiaomi-mobile-price-list-in-india"),
-            ("Realme", "realme-mobile-price-list-in-india"),
-            ("Oppo", "oppo-mobile-price-list-in-india"),
-            ("Vivo", "vivo-mobile-price-list-in-india"),
-            ("OnePlus", "oneplus-mobile-price-list-in-india"),
-            ("Poco", "poco-mobile-price-list-in-india"),
-            ("Motorola", "motorola-mobile-price-list-in-india"),
-            ("Nokia", "nokia-mobile-price-list-in-india"),
-            ("Infinix", "infinix-mobile-price-list-in-india"),
-            ("Itel", "itel-mobile-price-list-in-india"),
-            ("Tecno", "tecno-mobile-price-list-in-india"),
-            ("Apple", "apple-mobile-price-list-in-india"),
-            ("Honor", "honor-mobile-price-list-in-india"),
-            ("Nothing", "nothing-mobile-price-list-in-india"),
-            ("Google", "google-mobile-price-list-in-india"),
-            ("Lava", "lava-mobile-price-list-in-india"),
-            ("iQOO", "iqoo-mobile-price-list-in-india"),
-        ],
-        "container_selectors": ["li[data-model-id]", ".productCard", ".phoneList li",
-                                 "ul.productList li", "[class*='productList'] li",
-                                 "[class*='listingCard']"],
-        "name_selectors": ["h3", "h2", "h4", "[class*='name']", "[class*='title']", "[class*='Name']", "a"],
-        "price_selectors": ["[class*='priceValue']", "[class*='price__current']",
-                             "[class*='selling']", "[class*='offer']", "[class*='price']", ".price"],
-        "image_selectors": ["img", ".product-image img", "[class*='image'] img"],
-        "skip_name_regex": r'\b(accessory|accessories|charger|earphone|cable|case|cover|screen guard|protector|adapter)\b',
+    "yantra_nepal": {
+        "label": "Yantra Nepal", "country": "Nepal", "currency": "NPR",
+        "engine": "yantra_nepal",
+        "base_url": "https://yantranepal.com/mobile-price-in-nepal/",
+        "price_range": (1000, 500000),
+        "request_delay": 0.5,
     },
-    "priceoye": {
-        "label": "PriceOye", "country": "Pakistan", "currency": "PKR",
-        "engine": "selenium_js_enhanced",
-        "base_url": "https://priceoye.pk",
-        "target_url": "https://priceoye.pk/search",
-        "search_terms": ["phone", "mobile", "smartphone", "handset"],
-        "price_range": (5000, 300000),
-        "js_extractor": PRICEOYE_EXTRACT_JS,
-        "dom_fallback": {
-            "product_selectors": [".productCard", ".product-item", ".item-card",
-                                   "[class*='ProductCard']", "[class*='product-card']",
-                                   ".pListingsSection li", ".search-results li",
-                                   "li[class*='item']", "[class*='listing'] li"],
-            "name_selectors": ["h3", "h2", "h4", ".productTitle", "[class*='title']",
-                                "[class*='name']", "a[title]"],
-            "price_selectors": [".price", "[class*='price']", "[class*='Price']",
-                                 "[class*='amount']", "strong", "b"],
-            "image_selectors": ["img", ".product-image img", "[class*='image'] img"],
-        },
+    "gbn_store": {
+        "label": "GBN Store",
+        "country": "Nepal",
+        "currency": "NPR",
+        "engine": "gbn_store",
+        "base_url": "https://www.gbnstore.com",
+        "price_range": (500, 500000),
+        "max_load_more_clicks": 30,
+        "category_urls": [
+            "https://www.gbnstore.com/category/smartphone",
+        ],
     },
     "gadgetbytenepal": {
         "label": "GadgetByte Nepal", "country": "Nepal", "currency": "NPR",
@@ -2031,15 +2590,9 @@ SITES = {
         "price_range": (500, 300000),
         "categories": [
             "/mobile-phones-price-in-nepal",
-            "/mobile-accessories",
-            "/laptop",
-            "/smart-watch",
-            "/audio",
-            "/gaming",
-            "/tv",
-            "/camera"
+            "/mobile-accessories"
         ],
-        "image_selectors": ["img", ".product-image img", "[class*='image'] img"],
+        "image_selectors": ["img", ".product-image img", "[class*='image'] img", ".product-image", ".product-layout img"],
     },
     "dealayo": {
         "label": "Dealayo",
@@ -2051,6 +2604,16 @@ SITES = {
         "max_pages_per_term": 15,
         "request_delay": 0.5,
     },
+    "fatafatsewa": {
+        "label": "Fatafatsewa",
+        "country": "Nepal",
+        "currency": "NPR",
+        "engine": "fatafatsewa",
+        "base_url": "https://fatafatsewa.com",
+        "price_range": (500, 500000),
+        "max_pages_per_term": 10,
+        "request_delay": 0.5,
+    },
 }
 
 
@@ -2058,19 +2621,21 @@ SITES = {
 
 ENGINES = {
     "shopify_json_enhanced": engine_shopify_json_enhanced,
-    "brand_crawl_enhanced": engine_brand_crawl_enhanced,
-    "selenium_js_enhanced": engine_selenium_js_enhanced,
     "bfs_crawl_enhanced": engine_bfs_crawl_enhanced,
     "table_heading_enhanced": engine_table_heading_enhanced,
     "html_search_enhanced": engine_html_search_enhanced,
     "choicemandu": engine_choicemandu,
     "generic_auto_enhanced": engine_generic_auto_enhanced,
     "dealayo": engine_dealayo,
+    "fatafatsewa": engine_fatafatsewa,
+    "yantra_nepal": engine_yantra_nepal,
+    "gbn_store": engine_gbn_store,
 }
 
 CONCURRENT_SAFE_ENGINES = {
-    "shopify_json_enhanced", "brand_crawl_enhanced", "bfs_crawl_enhanced", 
-    "table_heading_enhanced", "html_search_enhanced", "dealayo"
+    "shopify_json_enhanced", "bfs_crawl_enhanced", 
+    "table_heading_enhanced", "html_search_enhanced", "dealayo", "fatafatsewa",
+    "yantra_nepal"
 }
 
 
@@ -2128,7 +2693,12 @@ def run_scrape(source_key: str, force: bool = False) -> dict:
     elif issues and status == "success":
         message = f"{len(cleaned)} products, but with issues: {issues[-1]}"
 
-    result = database.save_products(source_key, cleaned)
+    if cleaned:
+        result = database.save_products(source_key, cleaned)
+    else:
+        safe(f"[{source_key}] 0 products scraped — keeping existing stored data for this source")
+        result = {"source": source_key, "count": 0,
+                   "scraped_at": datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")}
     finished_at = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S")
     database.log_scrape(
         source=source_key, status=status, products_found=len(cleaned),
@@ -2223,15 +2793,24 @@ def scrape_any_url(url, max_pages=50, price_range=(50, 2_000_000), render_js=Fal
 
 
 if __name__ == "__main__":
-    database.init_db()
+    # Initialize database
+    try:
+        database.init_db()
+    except Exception as e:
+        safe(f"Database init error: {e}")
+    
     safe("=" * 70)
     safe("  HATBHAU (हट भाउ) — ENHANCED SCRAPER")
     safe("  Scraping ALL products with real-time status tracking")
     safe(f"  Sources: {', '.join(SITES.keys())}")
     safe("=" * 70)
-    summary = run_all()
+    
+    # Run only GBN Store to test
+    summary = run_selected(["gbn_store"])
+    
     safe("\n" + "=" * 70)
     safe("  SUMMARY")
     for key, res in summary.items():
-        safe(f"  {SITES[key]['label']:<20}: {res['count']:>4} products [{res['status']}]")
+        label = SITES.get(key, {}).get("label", key)
+        safe(f"  {label:<20}: {res['count']:>4} products [{res.get('status', 'unknown')}]")
     safe("=" * 70)

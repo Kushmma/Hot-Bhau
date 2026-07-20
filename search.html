@@ -421,7 +421,7 @@
             </div>
 
             <div class="nav-search-wrapper d-none d-md-block">
-                <form action="/search" method="get" class="m-0">
+                <form action="/search" method="get" class="m-0" onsubmit="return false;">
                     <i class="bi bi-search nav-search-icon"></i>
                     <input type="text" name="q" class="nav-search-input" id="nav-search-input"
                            placeholder="Search products..." autocomplete="off">
@@ -434,7 +434,7 @@
         </div>
 
         <div class="d-md-none mt-2">
-            <form action="/search" method="get" class="position-relative">
+            <form action="/search" method="get" class="position-relative" onsubmit="return false;">
                 <i class="bi bi-search position-absolute" style="left:12px; top:50%; transform:translateY(-50%); color:var(--text-muted);"></i>
                 <input type="text" name="q" class="nav-search-input" id="nav-search-input-mobile"
                        placeholder="Search products..." autocomplete="off" style="padding-left:40px;">
@@ -455,7 +455,7 @@
                     <div class="mb-3">
                         <label class="form-label">Search</label>
                         <input type="text" class="form-control" id="search-query-input" 
-                               placeholder="Search products..." oninput="applyFilters()">
+                               placeholder="Search products..." oninput="debouncedApplyFilters()">
                     </div>
                     
                     <div class="mb-3">
@@ -475,19 +475,19 @@
                     <div class="mb-3">
                         <label class="form-label">Min Price (Rs.)</label>
                         <input type="number" class="form-control" id="search-min-price" 
-                               placeholder="0" oninput="applyFilters()">
+                               placeholder="0" oninput="debouncedApplyFilters()">
                     </div>
                     
                     <div class="mb-3">
                         <label class="form-label">Max Price (Rs.)</label>
                         <input type="number" class="form-control" id="search-max-price" 
-                               placeholder="Any" oninput="applyFilters()">
+                               placeholder="Any" oninput="debouncedApplyFilters()">
                     </div>
                     
                     <div class="mb-3">
                         <label class="form-label">Min Discount (%)</label>
                         <input type="number" class="form-control" id="search-min-discount" 
-                               placeholder="0" oninput="applyFilters()">
+                               placeholder="0" oninput="debouncedApplyFilters()">
                     </div>
                     
                     <div class="mb-3">
@@ -521,11 +521,7 @@
                     </div>
                 </div>
                 <div class="row g-4" id="search-results">
-                    <div class="col-12 text-center py-5">
-                        <div class="spinner-border text-accent" role="status">
-                            <span class="visually-hidden">Loading...</span>
-                        </div>
-                    </div>
+                    <!-- Will be populated by JS -->
                 </div>
                 <div class="d-flex justify-content-between align-items-center mt-4">
                     <button class="btn btn-outline-accent btn-sm" id="search-prev-btn" onclick="changeSearchPage(-1)">
@@ -573,23 +569,43 @@
 </footer>
 
 <script>
-    const PLACEHOLDER_IMG = '/static/images/placeholder.svg';
+    // Simple placeholder SVG - clean, minimal, no text
+    const PLACEHOLDER_SVG = `data:image/svg+xml,${encodeURIComponent(`
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
+  <rect width="200" height="200" fill="#e8ecf1"/>
+  <rect x="70" y="50" width="60" height="60" rx="8" fill="#d0d4d9"/>
+  <circle cx="100" cy="80" r="15" fill="#b8bcc1"/>
+  <rect x="50" y="130" width="100" height="20" rx="4" fill="#d0d4d9"/>
+  <rect x="60" y="158" width="80" height="14" rx="4" fill="#d0d4d9"/>
+</svg>
+`)}`;
+
+    // Debounce helper
+    function debounce(fn, delay = 350) {
+        let timer;
+        return (...args) => {
+            clearTimeout(timer);
+            timer = setTimeout(() => fn(...args), delay);
+        };
+    }
 
     function safeImg(url) {
-        if (!url || url === 'None' || url === 'null' || url === 'undefined') return PLACEHOLDER_IMG;
+        if (!url || url === 'None' || url === 'null' || url === 'undefined' || url === '') {
+            return PLACEHOLDER_SVG;
+        }
         return url;
     }
 
     function imgFallback(el) {
         el.onerror = null;
-        el.src = PLACEHOLDER_IMG;
+        el.src = PLACEHOLDER_SVG;
         el.classList.add('loaded');
     }
 
     const STORE_ICONS = {
         'Daraz': 'bi-bag-check', 'Brother Mart': 'bi-shop2', 'PriceOye': 'bi-globe',
         'Sinja': 'bi-shop', '91mobiles': 'bi-phone', 'Fatafat Sewa': 'bi-lightning-charge',
-        'GadgetByte Nepal': 'bi-cpu',
+        'GadgetByte Nepal': 'bi-cpu', 'Choicemandu': 'bi-cart',
     };
 
     function getStoreIcon(store) {
@@ -616,11 +632,11 @@
                 <div class="product-img-wrapper">
                     ${discountTag}
                     <div class="store-badge-card"><i class="bi ${storeIcon} me-1"></i>${store}</div>
-                    <img src="${imageUrl}" class="product-img" alt="${p.name}" loading="lazy"
+                    <img src="${imageUrl}" class="product-img" alt="${p.name || 'Product'}" loading="lazy"
                          onload="this.classList.add('loaded')" onerror="imgFallback(this)">
                 </div>
                 <div class="product-card-body">
-                    <div class="product-title-link">${p.name}</div>
+                    <div class="product-title-link">${p.name || 'Unnamed Product'}</div>
                     <div class="product-price-row">
                         <span class="fw-800 text-accent">Rs. ${price.toLocaleString()}</span>
                         ${originalPrice ? `<span class="orig-price ms-2">Rs. ${originalPrice.toLocaleString()}</span>` : ''}
@@ -648,6 +664,31 @@
             if (icon) icon.className = next === 'dark' ? 'bi bi-sun-fill' : 'bi bi-moon-stars-fill';
         });
 
+        // Nav search input - redirect to search page with query
+        const navSearch = document.getElementById('nav-search-input');
+        if (navSearch) {
+            navSearch.addEventListener('keyup', (e) => {
+                if (e.key === 'Enter') {
+                    const val = navSearch.value.trim();
+                    if (val) {
+                        window.location.href = `/search?q=${encodeURIComponent(val)}`;
+                    }
+                }
+            });
+        }
+
+        const navSearchMobile = document.getElementById('nav-search-input-mobile');
+        if (navSearchMobile) {
+            navSearchMobile.addEventListener('keyup', (e) => {
+                if (e.key === 'Enter') {
+                    const val = navSearchMobile.value.trim();
+                    if (val) {
+                        window.location.href = `/search?q=${encodeURIComponent(val)}`;
+                    }
+                }
+            });
+        }
+
         loadFilterOptions();
 
         const urlParams = new URLSearchParams(window.location.search);
@@ -661,17 +702,8 @@
                 document.getElementById('search-category-filter').value = category;
                 applyFilters();
             }, 300);
-        }
-        const sortBy = urlParams.get('sort_by');
-        if (sortBy) {
-            setTimeout(() => {
-                document.getElementById('search-sort-by').value = sortBy;
-                applyFilters();
-            }, 300);
-        }
-
-        if (!q && !category && !sortBy) {
-            applyFilters();
+        } else {
+            setTimeout(applyFilters, 100);
         }
 
         fetch('/api/stats')
@@ -686,6 +718,8 @@
         page: 1,
         perPage: 20,
         filters: {},
+        loading: false,
+        abortController: null,
     };
 
     function loadFilterOptions() {
@@ -698,7 +732,7 @@
                 Object.values(sources).forEach(s => {
                     select.innerHTML += `<option value="${s.label}">${s.label}</option>`;
                 });
-                select.value = current;
+                if (current) select.value = current;
             })
             .catch(() => {});
 
@@ -711,10 +745,12 @@
                 cats.forEach(c => {
                     select.innerHTML += `<option value="${c.name}">${c.name}</option>`;
                 });
-                select.value = current;
+                if (current) select.value = current;
             })
             .catch(() => {});
     }
+
+    const debouncedApplyFilters = debounce(applyFilters, 350);
 
     function applyFilters() {
         const q = document.getElementById('search-query-input').value.trim();
@@ -744,6 +780,21 @@
     }
 
     function doSearch() {
+        if (searchState.abortController) {
+            searchState.abortController.abort();
+        }
+        const controller = new AbortController();
+        searchState.abortController = controller;
+        searchState.loading = true;
+
+        const container = document.getElementById('search-results');
+        container.innerHTML = `
+            <div class="col-12 text-center py-5">
+                <div class="spinner-border text-accent" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+            </div>`;
+
         const f = searchState.filters;
         let url = `/api/search?page=${searchState.page}&per_page=${searchState.perPage}`;
         if (f.q) url += `&q=${encodeURIComponent(f.q)}`;
@@ -754,10 +805,10 @@
         if (f.minDiscount) url += `&min_discount=${f.minDiscount}`;
         if (f.sortBy) url += `&sort_by=${f.sortBy}`;
 
-        fetch(url)
+        fetch(url, { signal: controller.signal })
             .then(r => r.json())
             .then(data => {
-                const container = document.getElementById('search-results');
+                searchState.loading = false;
                 if (data.items && data.items.length > 0) {
                     container.innerHTML = data.items.map(p => productCard(p)).join('');
                 } else {
@@ -766,6 +817,7 @@
                             <i class="bi bi-inbox fs-1 d-block mb-3"></i>
                             <h5>No products found</h5>
                             <p class="small">Try adjusting your filters or search term</p>
+                            ${f.q ? `<p class="small">Searching for: "${f.q}"</p>` : ''}
                         </div>`;
                 }
                 
@@ -776,8 +828,10 @@
                 document.getElementById('search-prev-btn').disabled = (data.page || 1) <= 1;
                 document.getElementById('search-next-btn').disabled = (data.page || 1) >= (data.pages || 1);
             })
-            .catch(() => {
-                document.getElementById('search-results').innerHTML = `
+            .catch((err) => {
+                if (err.name === 'AbortError') return;
+                searchState.loading = false;
+                container.innerHTML = `
                     <div class="col-12 text-center py-5 text-danger">
                         <i class="bi bi-exclamation-triangle fs-1 d-block mb-3"></i>
                         <h5>Error loading products</h5>
