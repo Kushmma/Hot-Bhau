@@ -1,5 +1,5 @@
 """
-HatBhau (हट भाउ) — Flask Application
+Best Bhau (बेस्ट भाउ) — Flask Application
 (no changes except better error handling in API endpoints)
 """
 
@@ -27,17 +27,17 @@ if sys.platform == "win32":
     sys.stderr.reconfigure(encoding="utf-8", errors="replace")
 
 # ── APP CONFIG ───────────────────────────────────────────────────────
-HOST = os.getenv("HATBHAU_HOST", "0.0.0.0")
-PORT = int(os.getenv("HATBHAU_PORT", "5000"))
-DEBUG = os.getenv("HATBHAU_DEBUG", "1") == "1"
+HOST = os.getenv("BESTBHAU_HOST", "0.0.0.0")
+PORT = int(os.getenv("BESTBHAU_PORT", "5000"))
+DEBUG = os.getenv("BESTBHAU_DEBUG", "1") == "1"
 
-ADMIN_TOKEN = os.getenv("HATBHAU_ADMIN_TOKEN", "hatbhau-dev-token-change-me")
-ADMIN_USERNAME = os.getenv("HATBHAU_ADMIN_USER", "momo")
-ADMIN_PASSWORD = os.getenv("HATBHAU_ADMIN_PASS", "momo")
-SECRET_KEY = os.getenv("HATBHAU_SECRET_KEY", "hatbhau-dev-secret-change-me")
+ADMIN_TOKEN = os.getenv("BESTBHAU_ADMIN_TOKEN", "BESTBHAU-dev-token-change-me")
+ADMIN_USERNAME = os.getenv("BESTBHAU_ADMIN_USER", "momo")
+ADMIN_PASSWORD = os.getenv("BESTBHAU_ADMIN_PASS", "momo")
+SECRET_KEY = os.getenv("BESTBHAU_SECRET_KEY", "BESTBHAU-dev-secret-change-me")
 
-SCHEDULER_ENABLED = os.getenv("HATBHAU_SCHEDULER_ENABLED", "0") == "1"
-SCHEDULER_INTERVAL_HOURS = int(os.getenv("HATBHAU_SCHEDULER_INTERVAL_HOURS", "6"))
+SCHEDULER_ENABLED = os.getenv("BESTBHAU_SCHEDULER_ENABLED", "0") == "1"
+SCHEDULER_INTERVAL_HOURS = int(os.getenv("BESTBHAU_SCHEDULER_INTERVAL_HOURS", "6"))
 
 app = Flask(__name__, template_folder=".", static_folder="static")
 app.secret_key = SECRET_KEY
@@ -468,7 +468,7 @@ def export_csv():
     try:
         import csv
         products = database.get_all_products()
-        path = os.path.join(tempfile.gettempdir(), "hatbhau_export.csv")
+        path = os.path.join(tempfile.gettempdir(), "BESTBHAU_export.csv")
         if products:
             with open(path, "w", newline="", encoding="utf-8-sig") as f:
                 writer = csv.DictWriter(f, fieldnames=list(products[0].keys()))
@@ -476,7 +476,7 @@ def export_csv():
                 writer.writerows(products)
         else:
             open(path, "w").close()
-        return send_file(path, as_attachment=True, download_name="hatbhau_products.csv")
+        return send_file(path, as_attachment=True, download_name="BESTBHAU_products.csv")
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -583,7 +583,7 @@ def _maybe_start_scheduler():
 if __name__ == "__main__":
     database.init_db()
     print("=" * 58)
-    print("  HatBhau (हट भाउ) — Nepali Price Comparison Engine")
+    print("  BESTBHAU (बेस्ट भाउ) — Nepali Price Comparison Engine")
     print(f"  Sources: {', '.join(cfg['label'] for cfg in SITES.values())}")
     print("=" * 58)
     print(f"  Dashboard    : http://localhost:{PORT}")

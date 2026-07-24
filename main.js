@@ -1,4 +1,4 @@
-/* HatBhau — shared frontend helpers */
+/* BestBhau — shared frontend helpers */
 
 // ── Inline placeholder SVG as data URI (no file needed) ──────────────
 const PLACEHOLDER_SVG = `data:image/svg+xml,${encodeURIComponent(`
@@ -81,13 +81,13 @@ function getStoreIcon(storeName) {
 document.addEventListener('DOMContentLoaded', () => {
     const root = document.documentElement;
     const toggle = document.getElementById('theme-toggle');
-    const saved = localStorage.getItem('hatbhau-theme');
+    const saved = localStorage.getItem('BestBhau-theme');
     if (saved) root.setAttribute('data-theme', saved);
 
     toggle?.addEventListener('click', () => {
         const next = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
         root.setAttribute('data-theme', next);
-        localStorage.setItem('hatbhau-theme', next);
+        localStorage.setItem('BestBhau-theme', next);
         const icon = toggle.querySelector('i');
         if (icon) icon.className = next === 'dark' ? 'bi bi-moon-stars-fill' : 'bi bi-sun-fill';
     });
