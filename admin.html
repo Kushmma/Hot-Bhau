@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin — BestBhau</title>
+    <title>Admin Panel — HatBhau</title>
     
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
@@ -124,6 +124,32 @@
             background: var(--success);
             color: #fff;
         }
+        .btn-outline-danger {
+            border: 2px solid var(--danger);
+            color: var(--danger);
+            background: transparent;
+            padding: 8px 20px;
+            border-radius: 10px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        .btn-outline-danger:hover {
+            background: var(--danger);
+            color: #fff;
+        }
+        .btn-outline-info {
+            border: 2px solid var(--info);
+            color: var(--info);
+            background: transparent;
+            padding: 8px 20px;
+            border-radius: 10px;
+            font-weight: 600;
+            transition: all 0.3s ease;
+        }
+        .btn-outline-info:hover {
+            background: var(--info);
+            color: #fff;
+        }
         .btn-sm {
             padding: 4px 12px;
             font-size: 0.75rem;
@@ -143,7 +169,7 @@
             box-shadow: 0 12px 48px var(--shadow-color);
         }
 
-        .navbar-BestBhau {
+        .admin-navbar {
             background: var(--bg-secondary);
             backdrop-filter: blur(16px);
             -webkit-backdrop-filter: blur(16px);
@@ -156,7 +182,7 @@
             z-index: 1050;
             transition: background 0.3s ease;
         }
-        .navbar-BestBhau .brand {
+        .admin-navbar .brand {
             display: inline-flex;
             align-items: center;
             gap: 10px;
@@ -201,41 +227,13 @@
             background-clip: text;
         }
         .brand-wordmark .latin-part { color: var(--text-primary); }
-        .navbar-BestBhau .brand .sub {
+        .admin-navbar .brand .sub {
             display: block;
             font-weight: 500;
             font-size: 0.62rem;
             color: var(--text-muted);
             letter-spacing: 0.5px;
             margin-top: 1px;
-        }
-
-        .nav-search-wrapper {
-            position: relative;
-            flex: 1;
-            max-width: 420px;
-        }
-        .nav-search-wrapper .nav-search-input {
-            width: 100%;
-            padding: 10px 16px 10px 44px;
-            border-radius: 12px;
-            border: 2px solid var(--border-color);
-            background: var(--input-bg);
-            color: var(--text-primary);
-            font-size: 0.9rem;
-            transition: all 0.3s ease;
-        }
-        .nav-search-wrapper .nav-search-input:focus {
-            outline: none;
-            border-color: var(--accent);
-            box-shadow: 0 0 0 4px rgba(233, 69, 96, 0.15);
-        }
-        .nav-search-wrapper .nav-search-icon {
-            position: absolute;
-            left: 14px;
-            top: 50%;
-            transform: translateY(-50%);
-            color: var(--text-muted);
         }
 
         .nav-link-custom {
@@ -274,18 +272,11 @@
             transform: rotate(20deg);
         }
 
-        .footer-BestBhau {
-            background: var(--bg-secondary);
-            border-top: 1px solid var(--border-color);
-            padding: 40px 0 24px;
-            margin-top: 40px;
-        }
-
         @media (max-width: 768px) {
             body { padding-top: 64px; }
-            .navbar-BestBhau .brand-wordmark { font-size: 1.15rem; }
-            .navbar-BestBhau .brand-mark { width: 32px; height: 32px; }
-            .navbar-BestBhau .brand .sub { display: none; }
+            .admin-navbar .brand-wordmark { font-size: 1.15rem; }
+            .admin-navbar .brand-mark { width: 32px; height: 32px; }
+            .admin-navbar .brand .sub { display: none; }
         }
 
         .status-badge {
@@ -319,22 +310,6 @@
             border-radius: 4px;
             transition: width 0.5s ease;
             width: 0%;
-        }
-
-        .admin-login-form {
-            max-width: 400px;
-            margin: 40px auto;
-        }
-        .admin-login-form .form-control {
-            background: var(--input-bg);
-            border: 1px solid var(--border-color);
-            color: var(--text-primary);
-            border-radius: 10px;
-            padding: 12px 16px;
-        }
-        .admin-login-form .form-control:focus {
-            border-color: var(--accent);
-            box-shadow: 0 0 0 3px rgba(233, 69, 96, 0.15);
         }
 
         .admin-card {
@@ -412,7 +387,6 @@
             padding: 2px 8px;
         }
 
-        /* Stats Cards */
         .stat-card {
             padding: 16px;
             border-radius: 12px;
@@ -435,7 +409,6 @@
             font-weight: 500;
         }
 
-        /* Source health table enhancements */
         .table-sm th {
             font-size: 0.7rem;
             text-transform: uppercase;
@@ -448,7 +421,6 @@
             vertical-align: middle;
         }
 
-        /* Toast notification */
         .toast-container {
             position: fixed;
             bottom: 20px;
@@ -463,6 +435,7 @@
             box-shadow: 0 8px 32px var(--shadow-color);
             min-width: 280px;
             max-width: 400px;
+            margin-top: 10px;
         }
         .toast-custom .toast-title {
             font-weight: 700;
@@ -471,48 +444,59 @@
             font-size: 0.9rem;
             color: var(--text-secondary);
         }
+
+        /* Admin navbar specific */
+        .admin-nav-links {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .admin-nav-links .nav-link-custom {
+            color: var(--text-secondary);
+            font-weight: 500;
+            padding: 6px 14px;
+            border-radius: 8px;
+            transition: all 0.2s ease;
+            cursor: pointer;
+        }
+        .admin-nav-links .nav-link-custom:hover {
+            background: rgba(233, 69, 96, 0.06);
+            color: var(--accent);
+        }
+        .admin-nav-links .nav-link-custom.active {
+            color: var(--accent);
+            background: rgba(233, 69, 96, 0.06);
+        }
+
+        @media (max-width: 768px) {
+            .admin-nav-links .nav-link-custom { font-size: 0.85rem; padding: 4px 10px; }
+        }
     </style>
 </head>
 <body>
 
-<!-- Navbar -->
-<nav class="navbar-BestBhau">
+<!-- Admin Navbar -->
+<nav class="admin-navbar">
     <div class="container">
         <div class="d-flex align-items-center gap-3 w-100 flex-wrap">
             <a class="brand text-decoration-none text-primary" href="/">
-                <span class="brand-mark"><i class="bi bi-tags-fill"></i></span>
+                <span class="brand-mark"><i class="bi bi-shield-lock-fill"></i></span>
                 <span>
-                    <span class="brand-wordmark"><span class="dev-part">Best</span><span class="latin-part">भाउ</span></span>
-                    <span class="sub d-none d-sm-inline">Nepal's Price Comparison</span>
+                    <span class="brand-wordmark"><span class="dev-part">हट</span><span class="latin-part">Bhau</span></span>
+                    <span class="sub d-none d-sm-inline">Admin Panel</span>
                 </span>
             </a>
 
-            <div class="d-flex align-items-center gap-1">
+            <div class="admin-nav-links">
                 <a href="/" class="nav-link-custom">Home</a>
                 <a href="/search" class="nav-link-custom">Search</a>
                 <a href="/compare" class="nav-link-custom">Compare</a>
                 <a href="/admin" class="nav-link-custom active">Admin</a>
             </div>
 
-            <div class="nav-search-wrapper d-none d-md-block">
-                <form action="/search" method="get" class="m-0">
-                    <i class="bi bi-search nav-search-icon"></i>
-                    <input type="text" name="q" class="nav-search-input" id="nav-search-input"
-                           placeholder="Search products..." autocomplete="off">
-                </form>
-            </div>
-
             <button class="theme-toggle-btn ms-auto" id="theme-toggle" aria-label="Toggle theme">
                 <i class="bi bi-moon-stars-fill"></i>
             </button>
-        </div>
-
-        <div class="d-md-none mt-2">
-            <form action="/search" method="get" class="position-relative">
-                <i class="bi bi-search position-absolute" style="left:12px; top:50%; transform:translateY(-50%); color:var(--text-muted);"></i>
-                <input type="text" name="q" class="nav-search-input" id="nav-search-input-mobile"
-                       placeholder="Search products..." autocomplete="off" style="padding-left:40px;">
-            </form>
         </div>
     </div>
 </nav>
@@ -521,38 +505,17 @@
 <main>
     <div class="container py-4">
         <div id="admin-content">
-            <!-- Login Form -->
-            <div id="admin-login-form" class="admin-login-form">
-                <div class="text-center mb-4">
-                    <h3 class="fw-800"><i class="bi bi-shield-lock text-accent"></i> Admin Login</h3>
-                    <p class="text-muted small">Enter your credentials to access admin panel</p>
-                    <p class="text-muted small">Default: <strong>momo</strong> / <strong>momo</strong></p>
-                </div>
-                <form onsubmit="adminLogin(event)">
-                    <div class="mb-3">
-                        <label class="form-label">Username</label>
-                        <input type="text" class="form-control" id="admin-username" placeholder="momo" value="momo" required>
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label">Password</label>
-                        <input type="password" class="form-control" id="admin-password" placeholder="••••••••" value="momo" required>
-                    </div>
-                    <button type="submit" class="btn btn-accent w-100">Login</button>
-                </form>
-                <div id="admin-login-error" class="text-danger text-center mt-2" style="display:none;">Invalid credentials</div>
-            </div>
-
             <!-- Dashboard -->
-            <div id="admin-dashboard" style="display:none;">
+            <div id="admin-dashboard">
                 <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-2">
                     <h3 class="fw-700"><i class="bi bi-speedometer2 text-accent"></i> Admin Dashboard</h3>
                     <div class="d-flex gap-2">
                         <button class="btn btn-outline-success btn-sm" onclick="refreshData()">
                             <i class="bi bi-arrow-clockwise"></i> Refresh
                         </button>
-                        <button class="btn btn-outline-danger btn-sm" onclick="adminLogout()">
+                        <a href="/admin/logout" class="btn btn-outline-danger btn-sm">
                             <i class="bi bi-box-arrow-right"></i> Logout
-                        </button>
+                        </a>
                     </div>
                 </div>
 
@@ -737,37 +700,6 @@
 <!-- Toast Container -->
 <div class="toast-container" id="toast-container"></div>
 
-<!-- Footer -->
-<footer class="footer-BestBhau">
-    <div class="container">
-        <div class="row align-items-center">
-            <div class="col-md-6 text-center text-md-start">
-                <div class="brand">
-                    <span class="brand-mark"><i class="bi bi-tags-fill"></i></span>
-                    <span class="brand-wordmark"><span class="dev-part">Best</span><span class="latin-part">भाउ</span></span>
-                </div>
-                <p class="text-muted small mt-2 mb-0">
-                    Compare prices across Nepal's top stores.
-                    <br class="d-sm-none">
-                    Made with ❤️ in Nepal.
-                </p>
-            </div>
-            <div class="col-md-6 text-center text-md-end">
-                <div class="d-flex gap-3 justify-content-center justify-content-md-end">
-                    <a href="/" class="text-muted small">Home</a>
-                    <a href="/search" class="text-muted small">Search</a>
-                    <a href="/compare" class="text-muted small">Compare</a>
-                    <a href="/admin" class="text-muted small">Admin</a>
-                </div>
-                <p class="text-muted small mt-2 mb-0">
-                    <i class="bi bi-database"></i> 
-                    <span id="footer-product-count">0</span> products tracked
-                </p>
-            </div>
-        </div>
-    </div>
-</footer>
-
 <!-- Bootstrap JS for modal -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
 
@@ -779,7 +711,7 @@
     document.addEventListener('DOMContentLoaded', () => {
         const root = document.documentElement;
         const toggle = document.getElementById('theme-toggle');
-        const saved = localStorage.getItem('BestBhau-theme');
+        const saved = localStorage.getItem('hatbhau-theme');
         if (saved) root.setAttribute('data-theme', saved);
         if (saved === 'dark') {
             toggle.querySelector('i').className = 'bi bi-sun-fill';
@@ -788,7 +720,7 @@
         toggle?.addEventListener('click', () => {
             const next = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
             root.setAttribute('data-theme', next);
-            localStorage.setItem('BestBhau-theme', next);
+            localStorage.setItem('hatbhau-theme', next);
             const icon = toggle.querySelector('i');
             if (icon) icon.className = next === 'dark' ? 'bi bi-sun-fill' : 'bi bi-moon-stars-fill';
         });
@@ -796,75 +728,15 @@
         // Initialize modal
         customScrapeModal = new bootstrap.Modal(document.getElementById('customScrapeModal'));
 
-        loadAdmin();
+        loadAdminData();
 
         fetch('/api/stats')
             .then(r => r.json())
             .then(data => {
-                document.getElementById('footer-product-count').textContent = data.total_products || 0;
+                // Footer count not needed in admin
             })
             .catch(() => {});
     });
-
-    function loadAdmin() {
-        fetch('/api/admin/health')
-            .then(r => {
-                if (r.status === 401) {
-                    document.getElementById('admin-login-form').style.display = 'block';
-                    document.getElementById('admin-dashboard').style.display = 'none';
-                } else if (r.ok) {
-                    document.getElementById('admin-login-form').style.display = 'none';
-                    document.getElementById('admin-dashboard').style.display = 'block';
-                    loadAdminData();
-                }
-            })
-            .catch(() => {
-                document.getElementById('admin-login-form').style.display = 'block';
-                document.getElementById('admin-dashboard').style.display = 'none';
-            });
-    }
-
-    function adminLogin(e) {
-        e.preventDefault();
-        const username = document.getElementById('admin-username').value;
-        const password = document.getElementById('admin-password').value;
-        
-        fetch('/admin/login', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-            body: `username=${encodeURIComponent(username)}&password=${encodeURIComponent(password)}`
-        })
-        .then(r => r.text())
-        .then(() => {
-            fetch('/api/admin/health')
-                .then(r => {
-                    if (r.ok) {
-                        document.getElementById('admin-login-form').style.display = 'none';
-                        document.getElementById('admin-dashboard').style.display = 'block';
-                        document.getElementById('admin-login-error').style.display = 'none';
-                        loadAdminData();
-                    } else {
-                        document.getElementById('admin-login-error').style.display = 'block';
-                    }
-                });
-        })
-        .catch(() => {
-            document.getElementById('admin-login-error').style.display = 'block';
-        });
-    }
-
-    function adminLogout() {
-        fetch('/admin/logout')
-            .then(() => {
-                document.getElementById('admin-login-form').style.display = 'block';
-                document.getElementById('admin-dashboard').style.display = 'none';
-            });
-    }
-
-    function refreshData() {
-        loadAdminData();
-        showToast('Refreshed', 'Data reloaded successfully', 'success');
-    }
 
     function loadAdminData() {
         loadHealth();
@@ -992,16 +864,8 @@
                 document.getElementById('stat-total-stores').textContent = data.total_stores || 0;
                 document.getElementById('stat-avg-discount').textContent = (data.avg_discount || 0) + '%';
                 document.getElementById('stat-last-scrape').textContent = data.last_scrape || 'Never';
-                
-                document.getElementById('admin-stats-summary').innerHTML = `
-                    <strong>${data.total_products || 0}</strong> products · 
-                    <strong>${data.total_stores || 0}</strong> stores · 
-                    ${data.avg_discount || 0}% avg discount
-                `;
             })
-            .catch(() => {
-                document.getElementById('admin-stats-summary').textContent = 'Error loading stats';
-            });
+            .catch(() => {});
     }
 
     function triggerScrape() {
@@ -1045,7 +909,6 @@
         .then(r => r.json())
         .then(data => {
             showToast('Scrape Started', `Scraping ${url} with ${maxPages} pages max`, 'info');
-            // Refresh health after a delay
             setTimeout(() => loadHealth(), 5000);
         })
         .catch(() => {
@@ -1144,6 +1007,11 @@
             });
     }
 
+    function refreshData() {
+        loadAdminData();
+        showToast('Refreshed', 'Data reloaded successfully', 'success');
+    }
+
     function checkScrapeStatus() {
         if (adminScrapeInterval) clearInterval(adminScrapeInterval);
         
@@ -1194,7 +1062,6 @@
                     if (data.running) {
                         statusText.innerHTML = `<span class="status-badge running">Running</span> ${data.message}${sourceTally}`;
                     } else if (data.message && data.message.includes('Done')) {
-                        // Final status - fetch all logs for final summary
                         fetch('/api/admin/logs?limit=10')
                             .then(r => r.json())
                             .then(logData => {
@@ -1259,7 +1126,6 @@
         }, 1500);
     }
 
-    // Toast notification system
     function showToast(title, message, type = 'info') {
         const container = document.getElementById('toast-container');
         const toast = document.createElement('div');
@@ -1276,16 +1142,6 @@
             toast.style.transition = 'all 0.3s ease';
             setTimeout(() => toast.remove(), 300);
         }, 4000);
-    }
-
-    // Source labels for logs
-    function getSourceLabels() {
-        const labels = {};
-        document.querySelectorAll('.scrape-source-check').forEach(cb => {
-            const chip = cb.closest('.scrape-chip');
-            labels[cb.value] = chip ? chip.querySelector('span').textContent : cb.value;
-        });
-        return labels;
     }
 </script>
 
