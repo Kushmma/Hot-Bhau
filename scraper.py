@@ -1,5 +1,5 @@
 """
-HatBhau (हट भाउ) — Enhanced Scraper Engine
+BestBhau (बेस्ट भाउ) — Enhanced Scraper Engine
 ==========================================
 Enhanced to scrape ALL products from each source with real-time status tracking.
 """
@@ -2506,25 +2506,6 @@ SITES = {
             "image_selectors": ["img", ".product-image img", "[class*='image'] img"],
         },
     },
-    "sinja": {
-        "label": "Sinja", "country": "Nepal", "currency": "NPR",
-        "engine": "shopify_json_enhanced",
-        "base_url": "https://sinja.com.np",
-        "collection_url": "https://sinja.com.np/collections/all",
-        "price_range": (2000, 250000),
-        "dom_fallback": {
-            "needs_selenium": True,
-            "product_selectors": ["div[data-product-id]", ".product-item", ".product-card",
-                                   "[class*='product-item']", "[class*='ProductCard']",
-                                   "li[class*='product']", ".grid-product"],
-            "name_selectors": ["h2", "h3", "h4", "[class*='product-title']",
-                                "[class*='title']", "[class*='name']"],
-            "price_selectors": ["[class*='price__current']", "[class*='price__sale']",
-                                 ".price-item--sale", ".price-item--regular",
-                                 "[class*='price']", ".money", "[data-price]"],
-            "image_selectors": ["img", ".product-image img", "[class*='image'] img"],
-        },
-    },
     "yantra_nepal": {
         "label": "Yantra Nepal", "country": "Nepal", "currency": "NPR",
         "engine": "yantra_nepal",
@@ -2800,7 +2781,7 @@ if __name__ == "__main__":
         safe(f"Database init error: {e}")
     
     safe("=" * 70)
-    safe("  HATBHAU (हट भाउ) — ENHANCED SCRAPER")
+    safe("  BestBhau (बेस्ट भाउ) — ENHANCED SCRAPER")
     safe("  Scraping ALL products with real-time status tracking")
     safe(f"  Sources: {', '.join(SITES.keys())}")
     safe("=" * 70)

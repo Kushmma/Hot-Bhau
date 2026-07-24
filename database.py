@@ -1,5 +1,5 @@
 """
-HatBhau (हट भाउ) — Database Layer
+BestBhau (बेस्ट भाउ) — Database Layer
 Simplified: uses LIKE for search (indexed), no FTS5 to avoid errors.
 """
 
@@ -11,7 +11,7 @@ from typing import Dict, List, Optional
 
 from scraper import SITES   # for label → key resolution
 
-DB_FILE = "hatbhau.db"
+DB_FILE = "BestBhau.db"
 
 PRODUCT_SCHEMA: Dict[str, str] = {
     "id": "INTEGER PRIMARY KEY AUTOINCREMENT",
